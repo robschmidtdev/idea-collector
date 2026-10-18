@@ -1,0 +1,94 @@
+{% extends "main/base.html" %}
+
+{% block title %}{{ item.name }} - Drum Factory{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'items' %}">Items</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ item.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h1 class="card-title mb-3">{{ item.name }}</h1>
+            
+            <!-- Show tags -->
+            {% if item.tags.all %}
+                <div class="mb-3">
+                    {% for tag in item.tags.all %}
+                        <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <p class="text-muted">
+                Created by: 
+                {% if item.created_by %}
+                    {{ item.created_by.username }}
+                {% else %}
+                    Unknown
+                {% endif %} 
+                on {{ item.created_at|date:"d.m.Y H:i" }}
+            </p>
+            <hr>
+            <div class="item-description fs-5">
+                {{ item.description|safe }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section: images -->
+    {% if item.images.all %}
+        <h3 class="mb-3">Images</h3>
+        <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+            {% for img in item.images.all %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ img.image.url }}" class="card-img-top p-2" style="max-height: 250px; object-fit: contain;" alt="Item Image">
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Section: videos -->
+    {% if item.videos.all %}
+        <h3 class="mb-3">Videos</h3>
+        <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+            {% for vid in item.videos.all %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm p-3">
+                        <video class="w-100 rounded" controls>
+                            <source src="{{ vid.video.url }}">
+                            Your browser does not support the video element.
+                        </video>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Section: audio -->
+    {% if item.audios.all %}
+        <h3 class="mb-3">Audio Files</h3>
+        <div class="list-group shadow-sm mb-4">
+            {% for aud in item.audios.all %}
+                <div class="list-group-item d-flex align-items-center justify-content-between py-3">
+                    <span>Audio Track {{ forloop.counter }}</span>
+                    <audio controls preload="none" style="width: 300px;">
+                        <source src="{{ aud.audio.url }}">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'items' %}" class="btn btn-secondary">Back to Overview</a>
+    </div>
+</div>
+{% endblock %}

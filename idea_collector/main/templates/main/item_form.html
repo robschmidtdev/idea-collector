@@ -1,0 +1,54 @@
+{% extends "main/base.html" %}
+
+{% block title %}New Item - Drum Factory{% endblock %}
+
+{% block extra_head %}
+    {{ form.media }}
+{% endblock %}
+
+{% block content %}
+<div class="container my-4" style="max-width: 700px;">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'items' %}">Items</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Create New</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h1 class="card-title mb-4">Create New Item</h1>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                {{ form.as_p }}
+
+                <hr class="my-4">
+
+                <h4 class="mb-3">Upload Media</h4>
+                
+                <div class="mb-3">
+                    <label for="formImages" class="form-label">Images (Multiple selection possible)</label>
+                    <input class="form-control" type="file" id="formImages" name="images" multiple accept="image/*">
+                </div>
+
+                <div class="mb-3">
+                    <label for="formVideos" class="form-label">Videos (Multiple selection possible)</label>
+                    <input class="form-control" type="file" id="formVideos" name="videos" multiple accept="video/*">
+                </div>
+
+                <div class="mb-3">
+                    <label for="formAudios" class="form-label">Audio Files (Multiple selection possible)</label>
+                    <input class="form-control" type="file" id="formAudios" name="audios" multiple accept="audio/*">
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'items' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
