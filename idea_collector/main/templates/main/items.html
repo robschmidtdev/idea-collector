@@ -6,26 +6,36 @@
 {% block content %}
 <div class="container my-4">
 
-    <div class="dropdown mb-3">
-        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-            <i class="bi bi-funnel"></i> Filter by tags
-        </button>
-        <div class="dropdown-menu p-2" aria-labelledby="tagFilterDropdown">
-            {% for tag in tags %}
-                <div class="form-check">
-                    <input class="form-check-input tag-filter" type="checkbox" value="{{ tag.pk }}" id="tag-{{ tag.pk }}">
-                    <label class="form-check-label" for="tag-{{ tag.pk }}">{{ tag.name }}</label>
+    <div class="row mb-3 g-2">
+        <div class="col-auto">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                    <i class="bi bi-funnel"></i> Filter by tags
+                </button>
+                <div class="dropdown-menu p-2" aria-labelledby="tagFilterDropdown">
+                    {% for tag in tags %}
+                        <div class="form-check">
+                            <input class="form-check-input tag-filter" type="checkbox" value="{{ tag.pk }}" id="tag-{{ tag.pk }}">
+                            <label class="form-check-label" for="tag-{{ tag.pk }}">{{ tag.name }}</label>
+                        </div>
+                    {% empty %}
+                        <span class="dropdown-item-text text-muted">No tags available</span>
+                    {% endfor %}
                 </div>
-            {% empty %}
-                <span class="dropdown-item-text text-muted">No tags available</span>
-            {% endfor %}
+            </div>
+        </div>
+        <div class="col">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" id="searchInput" placeholder="Search" autocomplete="off">
+            </div>
         </div>
     </div>
 
     {% if items %}
         <div class="list-group shadow-sm">
             {% for item in items %}
-                <a href="{% url 'item_detail' item.pk %}" class="list-group-item list-group-item-{{ item.color }} list-group-item-action d-flex justify-content-between align-items-center py-3" data-tags="{% for tag in item.tags.all %}{{ tag.pk }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                <a href="{% url 'item_detail' item.pk %}" class="list-group-item list-group-item-{{ item.color }} list-group-item-action d-flex justify-content-between align-items-center py-3" data-tags="{% for tag in item.tags.all %}{{ tag.pk }}{% if not forloop.last %},{% endif %}{% endfor %}" data-search="{{ item.name }} {{ item.get_plain_description }} {% for tag in item.tags.all %}{{ tag.name }} {% endfor %}{% for image in item.images.all %}{{ image.image.name }} {% endfor %}{% for video in item.videos.all %}{{ video.video.name }} {% endfor %}{% for audio in item.audios.all %}{{ audio.audio.name }} {% endfor %}{% if item.created_by %}{{ item.created_by.username }}{% endif %}">
                     <div>
                         <div class="fw-bold fs-5">{{ item.name }}</div>
                         {% if item.description %}
@@ -46,7 +56,7 @@
             {% endfor %}
         </div>
         <div id="noMatchAlert" class="alert alert-info d-none" role="alert">
-            No items match the selected tags.
+            No items match your search or selected tags.
         </div>
     {% else %}
         <div class="alert alert-info" role="alert">
@@ -57,7 +67,9 @@
 
 <script>
     const checkboxes = document.querySelectorAll('.tag-filter');
+    const searchInput = document.getElementById('searchInput');
     const noMatchAlert = document.getElementById('noMatchAlert');
+    let query = '';
 
     function filterItems() {
         const selected = new Set(
@@ -65,11 +77,14 @@
                 .filter(cb => cb.checked)
                 .map(cb => cb.value)
         );
+        const searchTerm = query.trim().toLowerCase();
 
         let visibleCount = 0;
         document.querySelectorAll('.list-group-item[data-tags]').forEach(item => {
             const itemTags = item.dataset.tags.split(',').filter(Boolean);
-            const show = selected.size === 0 || itemTags.some(t => selected.has(t));
+            const matchesTags = selected.size === 0 || itemTags.some(t => selected.has(t));
+            const matchesSearch = searchTerm === '' || item.dataset.search.toLowerCase().includes(searchTerm);
+            const show = matchesTags && matchesSearch;
             item.classList.toggle('d-none', !show);
             if (show) visibleCount++;
         });
@@ -78,5 +93,9 @@
     }
 
     checkboxes.forEach(cb => cb.addEventListener('change', filterItems));
+    searchInput.addEventListener('input', () => {
+        query = searchInput.value;
+        filterItems();
+    });
 </script>
 {% endblock %}

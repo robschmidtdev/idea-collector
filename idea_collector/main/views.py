@@ -53,7 +53,9 @@ def settings_view(request):
 
 
 def items(request):
-    item_list = Item.objects.all().prefetch_related("tags")
+    item_list = Item.objects.all().prefetch_related(
+        "tags", "images", "videos", "audios", "created_by"
+    )
     return render(
         request,
         "main/items.html",
