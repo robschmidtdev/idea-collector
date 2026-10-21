@@ -1,32 +1,55 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.forms import modelform_factory
-from .forms import ItemForm
-from .models import Item, ItemAudio, ItemImage, ItemVideo, SiteSettings
+from .forms import ItemForm, TagForm
+from .models import Item, ItemAudio, ItemImage, ItemVideo, SiteSettings, Tag
 
 SiteSettingsForm = modelform_factory(
-    SiteSettings, fields=['title', 'primary_color', 'text_color']
+    SiteSettings, fields=['title', 'primary_color']
 )
 
-
 def settings_view(request):
-  # Fetch the single existing instance from the database
-  settings_obj = SiteSettings.get_solo()
+    settings_obj = SiteSettings.get_solo()
+    
+    tags = Tag.objects.all()
 
-  if request.method == 'POST':
-    form = SiteSettingsForm(request.POST, instance=settings_obj)
-    if form.is_valid():
-      form.save()
-      messages.success(
-          request, 'Settings saved successfully!'
-      )
-      return redirect('settings')
-  else:
-    form = SiteSettingsForm(instance=settings_obj)
+    settings_form = SiteSettingsForm(instance=settings_obj)
+    tag_form = TagForm()
 
-  return render(
-      request, 'main/settings.html', {'form': form}
-  )
+    if request.method == 'POST':
+        if 'save_settings' in request.POST:
+            settings_form = SiteSettingsForm(request.POST, instance=settings_obj)
+            if settings_form.is_valid():
+                settings_form.save()
+                messages.success(request, 'Settings saved successfully!')
+                return redirect('settings')
+
+        elif 'save_tag' in request.POST:
+            tag_id = request.POST.get('tag_id')
+            if tag_id:
+                tag_instance = get_object_or_404(Tag, pk=tag_id)
+                tag_form = TagForm(request.POST, instance=tag_instance)
+            else:       
+                tag_form = TagForm(request.POST)
+
+            if tag_form.is_valid():
+                tag_form.save()
+                messages.success(request, 'Tag saved successfully!')
+                return redirect('settings')
+
+        elif 'delete_tag' in request.POST:
+            tag_id = request.POST.get('tag_id')
+            tag_instance = get_object_or_404(Tag, pk=tag_id)
+            tag_instance.delete()
+            messages.success(request, 'Tag deleted successfully!')
+            return redirect('settings')
+
+    context = {
+        'form': settings_form,    
+        'tag_form': tag_form,      
+        'tags': tags,               
+    }
+    return render(request, 'main/settings.html', context)
 
 
 def items(request):

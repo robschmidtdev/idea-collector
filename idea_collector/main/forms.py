@@ -1,5 +1,5 @@
 from django import forms
-from .models import Item
+from .models import Item, Tag
 
 class ItemForm(forms.ModelForm):
     class Meta:
@@ -7,5 +7,13 @@ class ItemForm(forms.ModelForm):
         fields = ['name', 'description']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            # 'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+class TagForm(forms.ModelForm):
+    class Meta:
+        model = Tag
+        fields = ["name", "color"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tag name"}),
+            "color": forms.TextInput(attrs={"type": "color", "class": "form-control form-control-color"}),
         }

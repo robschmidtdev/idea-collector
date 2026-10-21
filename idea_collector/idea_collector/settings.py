@@ -83,8 +83,6 @@ TEMPLATES = [
     },
 ]
 
-# settings.py
-
 CKEDITOR_CONFIGS = {
     'default': {
         'toolbar': 'Custom',
@@ -100,7 +98,6 @@ CKEDITOR_CONFIGS = {
         ],
         'height': 300,
         'width': '100%',
-        # In case you explicitly need plugins like tables:
         'extraPlugins': ','.join([
             'table',
             'tabletools',

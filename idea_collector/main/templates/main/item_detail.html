@@ -1,8 +1,29 @@
 {% extends "main/base.html" %}
 
-{% block title %}{{ item.name }} - Drum Factory{% endblock %}
+{% block title %}Item Detail - {{ settings.title }}{% endblock %}
 
 {% block content %}
+
+<style>
+    /* needed to nicely render tables of rich text editor */
+    .item-description table {
+        width: 100%;
+        margin-bottom: 1rem;
+        border-collapse: collapse;
+    }
+
+    .item-description th,
+    .item-description td {
+        border: 1px solid #dee2e6;
+        padding: 0.75rem;
+        vertical-align: top;
+    }
+
+    .item-description th {
+        font-weight: bold;
+    }
+</style>
+
 <div class="container my-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -11,15 +32,14 @@
         </ol>
     </nav>
 
-    <div class="card shadow-sm mb-4">
+    <div class="card shadow-sm mb-4 bg-{{ item.color }}-subtle">
         <div class="card-body">
             <h1 class="card-title mb-3">{{ item.name }}</h1>
             
-            <!-- Show tags -->
             {% if item.tags.all %}
                 <div class="mb-3">
                     {% for tag in item.tags.all %}
-                        <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                        <span class="badge me-1" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
                     {% endfor %}
                 </div>
             {% endif %}
@@ -31,7 +51,7 @@
                 {% else %}
                     Unknown
                 {% endif %} 
-                on {{ item.created_at|date:"d.m.Y H:i" }}
+                on {{ item.created_at|date:"Y-m-d H:i" }}
             </p>
             <hr>
             <div class="item-description fs-5">
@@ -40,7 +60,6 @@
         </div>
     </div>
 
-    <!-- Section: images -->
     {% if item.images.all %}
         <h3 class="mb-3">Images</h3>
         <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
@@ -54,7 +73,6 @@
         </div>
     {% endif %}
 
-    <!-- Section: videos -->
     {% if item.videos.all %}
         <h3 class="mb-3">Videos</h3>
         <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
@@ -71,7 +89,6 @@
         </div>
     {% endif %}
 
-    <!-- Section: audio -->
     {% if item.audios.all %}
         <h3 class="mb-3">Audio Files</h3>
         <div class="list-group shadow-sm mb-4">
@@ -86,9 +103,5 @@
             {% endfor %}
         </div>
     {% endif %}
-
-    <div class="mt-4">
-        <a href="{% url 'items' %}" class="btn btn-secondary">Back to Overview</a>
-    </div>
 </div>
 {% endblock %}

@@ -1,42 +1,39 @@
 from django.db import models
 from django.conf import settings
 from ckeditor.fields import RichTextField
+from django.utils.html import strip_tags
+import html
 
 
 class SiteSettings(models.Model):
-  title = models.CharField(
-      max_length=100, default='Drum xx Factory', verbose_name='Site title'
-  )
-  primary_color = models.CharField(
-      max_length=7, default='#0d6efd', verbose_name='Primary color (hex)'
-  )  # e.g. Bootstrap blue
-  text_color = models.CharField(
-      max_length=7, default='#212529', verbose_name='Text color (hex)'
-  )  # e.g. dark gray
+    title = models.CharField(
+        max_length=100, default='Drum xx Factory', verbose_name='Site title'
+    )
+    primary_color = models.CharField(
+        max_length=7, default='#0d6efd', verbose_name='Primary color (hex)'
+    )
 
-  def save(self, *args, **kwargs):
-    # Ensure there is only ever one settings entry (singleton pattern)
-    self.pk = 1
-    super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
 
-  @classmethod
-  def get_solo(cls):
-    # Fetch the settings or create them with default values if none exist
-    obj, created = cls.objects.get_or_create(pk=1)
-    return obj
+    @classmethod
+    def get_solo(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
 
-  def __str__(self):
-    return 'Site settings'
+    def __str__(self):
+        return 'Site settings'
 
-  class Meta:
-    verbose_name = 'Site setting'
-    verbose_name_plural = 'Site settings'
+    class Meta:
+        verbose_name = 'Site setting'
+        verbose_name_plural = 'Site settings'
 
 
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, unique=True, blank=True)
-    color = models.CharField(max_length=7, default="#6c757d", blank=True) # e.g. Bootstrap gray or a hex code
+    color = models.CharField(max_length=7, default="#6c757d", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -55,11 +52,28 @@ class Tag(models.Model):
 
 
 class Item(models.Model):
+    COLOR_CHOICES = [
+        ("primary", "Primary (Blue)"),
+        ("secondary", "Secondary (Gray)"),
+        ("success", "Success (Green)"),
+        ("danger", "Danger (Red)"),
+        ("warning", "Warning (Yellow)"),
+        ("info", "Info (Light Blue)"),
+        ("light", "Light (Very Light)"),
+    ]
+
     name = models.CharField(max_length=255)
     description = RichTextField(
         blank=True,
     )
     tags = models.ManyToManyField(Tag, blank=True, related_name="items")
+
+    color = models.CharField(
+        max_length=20,
+        choices=COLOR_CHOICES,
+        default="info",
+        blank=True
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -71,6 +85,10 @@ class Item(models.Model):
         blank=True,
         related_name="created_items",
     )
+
+    def get_plain_description(self):
+        plain_text = strip_tags(self.description)
+        return html.unescape(plain_text).strip()
 
     class Meta:
         ordering = ["name"]

@@ -13,15 +13,13 @@ from .models import (
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
 
-  # Prevent creating new entries if one already exists
-  def has_add_permission(self, request):
-    if self.model.objects.exists():
-      return False
-    return super().has_add_permission(request)
+    def has_add_permission(self, request):
+        if self.model.objects.exists():
+            return False
+        return super().has_add_permission(request)
 
-  # Prevent deleting the settings
-  def has_delete_permission(self, request, obj=None):
-    return False
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class ItemImageInline(admin.TabularInline):
@@ -106,9 +104,14 @@ class ItemAdmin(admin.ModelAdmin):
 
     list_display = (
         "name",
+        "color",
         "created_by",
         "created_at",
         "updated_at",
+    )
+
+    list_filter = (
+        "color",
     )
 
     search_fields = (
@@ -135,6 +138,7 @@ class ItemAdmin(admin.ModelAdmin):
                 "fields": (
                     "name",
                     "description",
+                    "color",
                     "tags",
                 )
             },
