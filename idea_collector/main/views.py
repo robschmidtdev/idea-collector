@@ -53,9 +53,11 @@ def settings_view(request):
 
 
 def items(request):
-    item_list = Item.objects.all()
+    item_list = Item.objects.all().prefetch_related("tags")
     return render(
-        request, "main/items.html", {"active": "items", "items": item_list}
+        request,
+        "main/items.html",
+        {"active": "items", "items": item_list, "tags": Tag.objects.all()},
     )
 
 
