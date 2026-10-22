@@ -75,6 +75,9 @@ class Item(models.Model):
         blank=True
     )
 
+    pinned = models.BooleanField(default=False)
+    pin_order = models.IntegerField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

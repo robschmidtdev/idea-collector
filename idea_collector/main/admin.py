@@ -105,6 +105,8 @@ class ItemAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "color",
+        "pinned",
+        "pin_order",
         "created_by",
         "created_at",
         "updated_at",

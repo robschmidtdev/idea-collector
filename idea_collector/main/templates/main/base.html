@@ -26,6 +26,12 @@
                     <li class="nav-item">
                     </li>
                     <li><a class="nav-link" href="{% url 'item_create' %}"><i class="bi bi-plus-circle"></i></a></li>
+                    <li class="nav-item d-flex align-items-center">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="showPinnedSwitch" checked>
+                            <label class="form-check-label" for="showPinnedSwitch">Show pinned</label>
+                        </div>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active == 'settings' %}active{% endif %}" href="{% url 'settings' %}"><i class="bi bi-gear"></i></a>
                     </li>
