@@ -57,6 +57,16 @@
             <div class="item-description fs-5">
                 {{ item.description|safe }}
             </div>
+
+            {% if item.referenced_items.all %}
+                <hr>
+                <h3 class="mb-3">Referenced Items</h3>
+                <div class="list-group shadow-sm mb-4">
+                    {% for related in item.referenced_items.all %}
+                        {% include "main/_item.html" with item=related %}
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
     </div>
 

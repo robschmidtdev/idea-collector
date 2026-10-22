@@ -98,7 +98,10 @@ def item_reorder(request):
 
 
 def item_detail(request, pk):
-    item = get_object_or_404(Item, pk=pk)
+    item = get_object_or_404(
+        Item.objects.prefetch_related("tags", "images", "videos", "audios", "referenced_items", "referenced_items__tags"),
+        pk=pk,
+    )
     context = {
         "active": "items",
         "item": item,
@@ -114,6 +117,7 @@ def item_create(request):
             if request.user.is_authenticated:
                 item.created_by = request.user
             item.save()
+            form.save_m2m()
 
             for f in request.FILES.getlist("images"):
                 ItemImage.objects.create(item=item, image=f)

@@ -16,12 +16,13 @@
 
     {% csrf_token %}
 
-    <div class="row mb-3 g-2">
+    <div class="row mb-3 g-2 align-items-center">
         <div class="col-auto">
             <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                     <i class="bi bi-funnel"></i> Filter by tags
                 </button>
+                
                 <div class="dropdown-menu p-2" aria-labelledby="tagFilterDropdown">
                     {% for tag in tags %}
                         <div class="form-check">
@@ -33,6 +34,11 @@
                     {% endfor %}
                 </div>
             </div>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-secondary" id="togglePinnedBtn" type="button">
+                <i class="bi bi-pin"></i> <span id="togglePinnedText">Hide Pinned</span>
+            </button>
         </div>
         <div class="col">
             <div class="input-group">
@@ -70,7 +76,8 @@
     const checkboxes = document.querySelectorAll('.tag-filter');
     const searchInput = document.getElementById('searchInput');
     const noMatchAlert = document.getElementById('noMatchAlert');
-    const showPinnedSwitch = document.getElementById('showPinnedSwitch');
+    const togglePinnedBtn = document.getElementById('togglePinnedBtn');
+    const togglePinnedText = document.getElementById('togglePinnedText');
     const pinnedSection = document.getElementById('pinnedSection');
     const pinnedList = document.getElementById('pinnedList');
     const pinnedDivider = document.getElementById('pinnedDivider');
@@ -78,13 +85,20 @@
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     let query = '';
     let dragged = null;
+    let showPinned = localStorage.getItem('showPinned') !== 'false';
 
-    if (showPinnedSwitch) {
-        showPinnedSwitch.checked = localStorage.getItem('showPinned') !== 'false';
+    function updatePinnedToggleUI() {
+        if (!togglePinnedBtn) return;
+        if (showPinned) {
+            if (togglePinnedText) togglePinnedText.textContent = 'Hide Pinned';
+        } else {
+            if (togglePinnedText) togglePinnedText.textContent = 'Show Pinned';
+        }
     }
 
+    updatePinnedToggleUI();
+
     function updateLayout() {
-        const showPinned = showPinnedSwitch ? showPinnedSwitch.checked : true;
         const hasPinned = pinnedList && pinnedList.querySelectorAll('.pinned-item').length > 0;
         const hasUnpinned = itemList && itemList.querySelectorAll('.list-group-item').length > 0;
 
@@ -99,7 +113,6 @@
                 .map(cb => cb.value)
         );
         const searchTerm = query.trim().toLowerCase();
-        const showPinned = showPinnedSwitch ? showPinnedSwitch.checked : true;
 
         let visibleCount = 0;
         document.querySelectorAll('.list-group-item[data-tags]').forEach(item => {
@@ -114,6 +127,15 @@
 
         if (noMatchAlert) noMatchAlert.classList.toggle('d-none', visibleCount !== 0);
         updateLayout();
+    }
+
+    if (togglePinnedBtn) {
+        togglePinnedBtn.addEventListener('click', () => {
+            showPinned = !showPinned;
+            localStorage.setItem('showPinned', showPinned);
+            updatePinnedToggleUI();
+            filterItems();
+        });
     }
 
     function setPinButton(button, pinned) {
@@ -212,13 +234,13 @@
         query = searchInput.value;
         filterItems();
     });
-    if (showPinnedSwitch) {
-        showPinnedSwitch.addEventListener('change', () => {
-            localStorage.setItem('showPinned', showPinnedSwitch.checked);
-            filterItems();
-        });
-    }
 
     filterItems();
+
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
 </script>
 {% endblock %}

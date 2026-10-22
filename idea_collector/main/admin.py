@@ -126,6 +126,7 @@ class ItemAdmin(admin.ModelAdmin):
     
     filter_horizontal = (
         "tags",
+        "referenced_items",
     )
 
     readonly_fields = (
@@ -142,6 +143,7 @@ class ItemAdmin(admin.ModelAdmin):
                     "description",
                     "color",
                     "tags",
+                    "referenced_items",
                 )
             },
         ),

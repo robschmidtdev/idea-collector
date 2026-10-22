@@ -78,6 +78,14 @@ class Item(models.Model):
     pinned = models.BooleanField(default=False)
     pin_order = models.IntegerField(null=True, blank=True)
 
+    referenced_items = models.ManyToManyField(
+        "self",
+        symmetrical=False,
+        blank=True,
+        related_name="referenced_from",
+        verbose_name="Referenced Items",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
