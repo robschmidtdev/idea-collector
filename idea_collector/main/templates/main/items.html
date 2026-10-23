@@ -15,6 +15,8 @@
 <div class="container my-4">
 
     {% csrf_token %}
+    {{ visible_filters|json_script:"visibleFiltersData" }}
+    {{ filter_prefs_in_db|json_script:"filterPrefsInDb" }}
 
     <div class="row mb-3 g-2 align-items-center">
         <div class="col-auto">
@@ -40,6 +42,48 @@
                 <i class="bi bi-pin"></i> <span id="togglePinnedText">Hide Pinned</span>
             </button>
         </div>
+        <div class="col-auto d-flex flex-wrap gap-2" id="extraFilters">
+            <div class="filter-control d-none" data-filter-key="color">
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-palette"></i> Color
+                    </button>
+                    <div class="dropdown-menu p-2">
+                        {% for value, label in color_choices %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" data-filter="color" value="{{ value }}" id="filter-color-{{ value }}">
+                                <label class="form-check-label" for="filter-color-{{ value }}">{{ label }}</label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="filter-control d-none" data-filter-key="media">
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-paperclip"></i> Media
+                    </button>
+                    <div class="dropdown-menu p-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-filter="media" value="images" id="filter-media-images">
+                            <label class="form-check-label" for="filter-media-images">Has Images</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-filter="media" value="videos" id="filter-media-videos">
+                            <label class="form-check-label" for="filter-media-videos">Has Videos</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-filter="media" value="audios" id="filter-media-audios">
+                            <label class="form-check-label" for="filter-media-audios">Has Audio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-filter="media" value="references" id="filter-media-references">
+                            <label class="form-check-label" for="filter-media-references">Has References</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="col">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -48,6 +92,23 @@
         </div>
         <div class="col-auto">
             <span class="btn btn-secondary disabled text-nowrap" id="itemCount" role="status" aria-live="polite" aria-disabled="true"></span>
+        </div>
+        <div class="col-auto">
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="addFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                    <i class="bi bi-plus-lg"></i> Filter
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="addFilterDropdown">
+                    <div class="form-check">
+                        <input class="form-check-input add-filter-toggle" type="checkbox" value="color" id="add-filter-color">
+                        <label class="form-check-label" for="add-filter-color"><i class="bi bi-palette"></i> Color</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input add-filter-toggle" type="checkbox" value="media" id="add-filter-media">
+                        <label class="form-check-label" for="add-filter-media"><i class="bi bi-paperclip"></i> Media</label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -66,7 +127,7 @@
             {% endfor %}
         </div>
         <div id="noMatchAlert" class="alert alert-info d-none" role="alert">
-            No items match your search or selected tags.
+            No items match your search or selected filters.
         </div>
         <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center gap-2 mt-3">
             <nav aria-label="Item pages" id="paginationNav" class="d-none">
@@ -102,6 +163,17 @@
     const itemsPerPageSelect = document.getElementById('itemsPerPageSelect');
     const itemCount = document.getElementById('itemCount');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const filterPrefsInDb = JSON.parse(document.getElementById('filterPrefsInDb').textContent);
+    const storedVisibleFilters = JSON.parse(document.getElementById('visibleFiltersData').textContent);
+    let visibleFilters = new Set(storedVisibleFilters);
+    if (!filterPrefsInDb) {
+        try {
+            const localFilters = JSON.parse(localStorage.getItem('visibleFilters') || '[]');
+            if (Array.isArray(localFilters)) visibleFilters = new Set(localFilters);
+        } catch (error) {
+            visibleFilters = new Set();
+        }
+    }
     const PER_PAGE_OPTIONS = [3, 5, 10, 25, 50];
     let itemsPerPage = parseInt(localStorage.getItem('itemsPerPage'), 10);
     if (!PER_PAGE_OPTIONS.includes(itemsPerPage)) itemsPerPage = 10;
@@ -127,6 +199,38 @@
 
     updatePinnedToggleUI();
 
+    function getSelectedFilterValues(key) {
+        return new Set(
+            Array.from(document.querySelectorAll(`input[data-filter="${key}"]:checked`))
+                .map(input => input.value)
+        );
+    }
+
+    function updateExtraFiltersUI() {
+        document.querySelectorAll('.filter-control[data-filter-key]').forEach(control => {
+            control.classList.toggle('d-none', !visibleFilters.has(control.dataset.filterKey));
+        });
+        document.querySelectorAll('.add-filter-toggle').forEach(toggle => {
+            toggle.checked = visibleFilters.has(toggle.value);
+        });
+    }
+
+    function saveVisibleFilters() {
+        const values = Array.from(visibleFilters);
+        if (!filterPrefsInDb) {
+            localStorage.setItem('visibleFilters', JSON.stringify(values));
+            return;
+        }
+        fetch('/filters/preferences/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ visible_filters: values }),
+        });
+    }
+
     function updateLayout() {
         const hasPinned = pinnedList && [...pinnedList.querySelectorAll('.pinned-item')]
             .some(el => !el.classList.contains('d-none'));
@@ -144,12 +248,21 @@
                 .map(cb => cb.value)
         );
         const searchTerm = query.trim().toLowerCase();
+        const selectedColors = getSelectedFilterValues('color');
+        const selectedMedia = getSelectedFilterValues('media');
 
         document.querySelectorAll('.list-group-item[data-tags]').forEach(item => {
             const itemTags = item.dataset.tags.split(',').filter(Boolean);
             const matchesTags = selected.size === 0 || itemTags.some(t => selected.has(t));
             const matchesSearch = searchTerm === '' || item.dataset.search.toLowerCase().includes(searchTerm);
-            item.dataset.matches = (matchesTags && matchesSearch) ? 'true' : 'false';
+            const matchesColor = selectedColors.size === 0 || selectedColors.has(item.dataset.color);
+            const itemMedia = [];
+            if (item.dataset.hasImages === 'true') itemMedia.push('images');
+            if (item.dataset.hasVideos === 'true') itemMedia.push('videos');
+            if (item.dataset.hasAudios === 'true') itemMedia.push('audios');
+            if (item.dataset.hasReferences === 'true') itemMedia.push('references');
+            const matchesMedia = selectedMedia.size === 0 || itemMedia.some(media => selectedMedia.has(media));
+            item.dataset.matches = (matchesTags && matchesSearch && matchesColor && matchesMedia) ? 'true' : 'false';
 
             if (item.dataset.pinned === 'true') {
                 item.classList.toggle('d-none', !showPinned);
@@ -371,6 +484,24 @@
     });
 
     checkboxes.forEach(cb => cb.addEventListener('change', () => filterItems()));
+    document.querySelectorAll('input[data-filter]').forEach(input => {
+        input.addEventListener('change', () => filterItems());
+    });
+    document.querySelectorAll('.add-filter-toggle').forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            if (toggle.checked) {
+                visibleFilters.add(toggle.value);
+            } else {
+                visibleFilters.delete(toggle.value);
+                document.querySelectorAll(`input[data-filter="${toggle.value}"]`).forEach(input => {
+                    input.checked = false;
+                });
+            }
+            updateExtraFiltersUI();
+            filterItems();
+            saveVisibleFilters();
+        });
+    });
     if (itemsPerPageSelect) {
         itemsPerPageSelect.addEventListener('change', () => {
             const value = parseInt(itemsPerPageSelect.value, 10);
@@ -386,6 +517,7 @@
         filterItems();
     });
 
+    updateExtraFiltersUI();
     filterItems();
 
     window.addEventListener('pageshow', function(event) {

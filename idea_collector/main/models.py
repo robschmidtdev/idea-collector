@@ -110,6 +110,22 @@ class Item(models.Model):
         return self.name
 
 
+class UserFilterPreference(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="filter_preferences",
+    )
+    visible_filters = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        verbose_name = "User filter preference"
+        verbose_name_plural = "User filter preferences"
+
+    def __str__(self):
+        return f"Filter preferences - {self.user}"
+
+
 class ItemImage(models.Model):
     item = models.ForeignKey(
         Item,

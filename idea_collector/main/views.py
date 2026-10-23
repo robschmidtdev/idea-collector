@@ -1,10 +1,22 @@
+import json
+
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.forms import modelform_factory
 from django.http import JsonResponse
 from django.db import models
 from .forms import ItemForm, TagForm
-from .models import Item, ItemAudio, ItemImage, ItemVideo, SiteSettings, Tag
+from .models import (
+    Item,
+    ItemAudio,
+    ItemImage,
+    ItemVideo,
+    SiteSettings,
+    Tag,
+    UserFilterPreference,
+)
+
+EXTRA_FILTER_KEYS = ("color", "media")
 
 SiteSettingsForm = modelform_factory(
     SiteSettings, fields=['title', 'primary_color']
@@ -56,11 +68,21 @@ def settings_view(request):
 
 def items(request):
     pinned_items = Item.objects.filter(pinned=True).prefetch_related(
-        "tags", "images", "videos", "audios", "created_by"
+        "tags", "images", "videos", "audios", "referenced_items", "created_by"
     ).order_by("pin_order", "name")
     unpinned_items = Item.objects.filter(pinned=False).prefetch_related(
-        "tags", "images", "videos", "audios", "created_by"
+        "tags", "images", "videos", "audios", "referenced_items", "created_by"
     ).order_by("name")
+
+    visible_filters = []
+    if request.user.is_authenticated:
+        preference = UserFilterPreference.objects.filter(user=request.user).first()
+        if preference:
+            visible_filters = [
+                key for key in preference.visible_filters
+                if key in EXTRA_FILTER_KEYS
+            ]
+
     return render(
         request,
         "main/items.html",
@@ -69,8 +91,36 @@ def items(request):
             "pinned_items": pinned_items,
             "unpinned_items": unpinned_items,
             "tags": Tag.objects.all(),
+            "color_choices": Item.COLOR_CHOICES,
+            "visible_filters": visible_filters,
+            "filter_prefs_in_db": request.user.is_authenticated,
         },
     )
+
+
+def filter_preferences(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False}, status=403)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False}, status=400)
+
+    visible_filters = data.get("visible_filters", [])
+    if not isinstance(visible_filters, list):
+        return JsonResponse({"ok": False}, status=400)
+
+    visible_filters = [
+        key for key in visible_filters if key in EXTRA_FILTER_KEYS
+    ]
+
+    preference, _ = UserFilterPreference.objects.get_or_create(user=request.user)
+    preference.visible_filters = visible_filters
+    preference.save(update_fields=["visible_filters"])
+    return JsonResponse({"ok": True})
 
 
 def item_toggle_pin(request, pk):
@@ -109,6 +159,27 @@ def item_detail(request, pk):
     return render(request, "main/item_detail.html", context)
 
 
+def _save_media(item, request):
+    for f in request.FILES.getlist("images"):
+        ItemImage.objects.create(item=item, image=f)
+    for f in request.FILES.getlist("videos"):
+        ItemVideo.objects.create(item=item, video=f)
+    for f in request.FILES.getlist("audios"):
+        ItemAudio.objects.create(item=item, audio=f)
+
+
+def _delete_media(model, field, item, pks):
+    for media in model.objects.filter(item=item, pk__in=pks):
+        getattr(media, field).delete(save=False)
+        media.delete()
+
+
+def _delete_media_selection(item, request):
+    _delete_media(ItemImage, "image", item, request.POST.getlist("delete_images"))
+    _delete_media(ItemVideo, "video", item, request.POST.getlist("delete_videos"))
+    _delete_media(ItemAudio, "audio", item, request.POST.getlist("delete_audios"))
+
+
 def item_create(request):
     if request.method == "POST":
         form = ItemForm(request.POST)
@@ -119,15 +190,48 @@ def item_create(request):
             item.save()
             form.save_m2m()
 
-            for f in request.FILES.getlist("images"):
-                ItemImage.objects.create(item=item, image=f)
-            for f in request.FILES.getlist("videos"):
-                ItemVideo.objects.create(item=item, video=f)
-            for f in request.FILES.getlist("audios"):
-                ItemAudio.objects.create(item=item, audio=f)
+            _save_media(item, request)
 
             return redirect("item_detail", pk=item.pk)
     else:
         form = ItemForm()
 
     return render(request, "main/item_form.html", {"form": form, "active": "items"})
+
+
+def item_update(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+
+    if request.method == "POST":
+        form = ItemForm(request.POST, instance=item)
+        if form.is_valid():
+            item = form.save()
+            _delete_media_selection(item, request)
+            _save_media(item, request)
+
+            return redirect("item_detail", pk=item.pk)
+    else:
+        form = ItemForm(instance=item)
+
+    return render(
+        request,
+        "main/item_form.html",
+        {"form": form, "item": item, "active": "items"},
+    )
+
+
+def item_delete(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+
+    if request.method != "POST":
+        return redirect("item_detail", pk=item.pk)
+
+    for image in item.images.all():
+        image.image.delete(save=False)
+    for video in item.videos.all():
+        video.video.delete(save=False)
+    for audio in item.audios.all():
+        audio.audio.delete(save=False)
+    item.delete()
+
+    return redirect("items")
