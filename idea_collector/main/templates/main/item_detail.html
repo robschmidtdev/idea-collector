@@ -120,7 +120,7 @@
 
     {% if item.referenced_items.all %}
         <h3 class="mb-3">Referenced Items</h3>
-        <div class="list-group shadow-sm mb-4">
+        <div class="list-group shadow-sm mb-4 item-list" id="referencedItemsList">
             {% for related in item.referenced_items.all %}
                 {% include "main/_item.html" with item=related %}
             {% endfor %}

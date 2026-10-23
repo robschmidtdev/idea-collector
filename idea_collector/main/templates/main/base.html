@@ -11,6 +11,19 @@
             background-color: {{ settings.primary_color }} !important;
             border-color: {{ settings.primary_color }} !important;
         }
+        .item-link {
+            border-radius: var(--bs-border-radius);
+            padding: 0.5rem;
+            margin: -0.5rem 0 -0.5rem -0.5rem;
+            min-width: 0;
+        }
+        .item-list {
+            gap: 0.25rem;
+        }
+        .item-list .list-group-item {
+            border-top-width: var(--bs-list-group-border-width);
+            border-radius: var(--bs-border-radius);
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

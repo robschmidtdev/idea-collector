@@ -5,9 +5,6 @@
 
 {% block content %}
 <style>
-    .list-group-item.pinned {
-        border-left: 4px solid {{ settings.primary_color }};
-    }
     .list-group-item.dragging {
         opacity: 0.5;
     }
@@ -142,14 +139,14 @@
 
     {% if pinned_items or unpinned_items %}
         <div id="pinnedSection" {% if not pinned_items %}class="d-none"{% endif %}>
-            <div class="list-group shadow-sm mb-3" id="pinnedList">
+            <div class="list-group shadow-sm mb-3 item-list" id="pinnedList">
                 {% for item in pinned_items %}
                     {% include "main/_item.html" %}
                 {% endfor %}
             </div>
             <hr id="pinnedDivider" class="my-4">
         </div>
-        <div class="list-group shadow-sm" id="itemList">
+        <div class="list-group shadow-sm item-list" id="itemList">
             {% for item in unpinned_items %}
                 {% include "main/_item.html" %}
             {% endfor %}
@@ -467,7 +464,7 @@
 
     function moveItemToPinned(item) {
         item.dataset.pinned = 'true';
-        item.classList.add('pinned', 'pinned-item');
+        item.classList.add('pinned-item');
         item.draggable = true;
         setPinButton(item.querySelector('.pin-btn'), true);
         pinnedList.appendChild(item);
@@ -476,7 +473,7 @@
 
     function moveItemToUnpinned(item) {
         item.dataset.pinned = 'false';
-        item.classList.remove('pinned', 'pinned-item');
+        item.classList.remove('pinned-item');
         item.draggable = false;
         setPinButton(item.querySelector('.pin-btn'), false);
         itemList.appendChild(item);
