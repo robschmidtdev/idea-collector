@@ -65,6 +65,18 @@
         <div id="noMatchAlert" class="alert alert-info d-none" role="alert">
             No items match your search or selected tags.
         </div>
+        <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center gap-2 mt-3">
+            <nav aria-label="Item pages" id="paginationNav" class="d-none">
+                <ul class="pagination flex-wrap justify-content-center mb-0" id="pagination"></ul>
+            </nav>
+            <select class="form-select form-select w-auto" id="itemsPerPageSelect" aria-label="Items per page">
+                <option value="3">3 per page</option>
+                <option value="5">5 per page</option>
+                <option value="10" selected>10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+            </select>
+        </div>
     {% else %}
         <div class="alert alert-info" role="alert">
             There are currently no items available.
@@ -82,10 +94,23 @@
     const pinnedList = document.getElementById('pinnedList');
     const pinnedDivider = document.getElementById('pinnedDivider');
     const itemList = document.getElementById('itemList');
+    const paginationNav = document.getElementById('paginationNav');
+    const pagination = document.getElementById('pagination');
+    const itemsPerPageSelect = document.getElementById('itemsPerPageSelect');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const PER_PAGE_OPTIONS = [3, 5, 10, 25, 50];
+    let itemsPerPage = parseInt(localStorage.getItem('itemsPerPage'), 10);
+    if (!PER_PAGE_OPTIONS.includes(itemsPerPage)) itemsPerPage = 10;
+    let currentPage = 1;
     let query = '';
     let dragged = null;
     let showPinned = localStorage.getItem('showPinned') !== 'false';
+
+    function updateItemsPerPageUI() {
+        if (itemsPerPageSelect) itemsPerPageSelect.value = String(itemsPerPage);
+    }
+
+    updateItemsPerPageUI();
 
     function updatePinnedToggleUI() {
         if (!togglePinnedBtn) return;
@@ -99,14 +124,16 @@
     updatePinnedToggleUI();
 
     function updateLayout() {
-        const hasPinned = pinnedList && pinnedList.querySelectorAll('.pinned-item').length > 0;
-        const hasUnpinned = itemList && itemList.querySelectorAll('.list-group-item').length > 0;
+        const hasPinned = pinnedList && [...pinnedList.querySelectorAll('.pinned-item')]
+            .some(el => !el.classList.contains('d-none'));
+        const hasUnpinned = itemList && [...itemList.querySelectorAll('.list-group-item')]
+            .some(el => !el.classList.contains('d-none'));
 
         if (pinnedSection) pinnedSection.classList.toggle('d-none', !showPinned || !hasPinned);
         if (pinnedDivider) pinnedDivider.classList.toggle('d-none', !hasPinned || !hasUnpinned);
     }
 
-    function filterItems() {
+    function filterItems(resetPage = true) {
         const selected = new Set(
             Array.from(checkboxes)
                 .filter(cb => cb.checked)
@@ -114,19 +141,122 @@
         );
         const searchTerm = query.trim().toLowerCase();
 
-        let visibleCount = 0;
         document.querySelectorAll('.list-group-item[data-tags]').forEach(item => {
             const itemTags = item.dataset.tags.split(',').filter(Boolean);
             const matchesTags = selected.size === 0 || itemTags.some(t => selected.has(t));
             const matchesSearch = searchTerm === '' || item.dataset.search.toLowerCase().includes(searchTerm);
-            const matchesPinned = showPinned || item.dataset.pinned !== 'true';
-            const show = matchesTags && matchesSearch && matchesPinned;
-            item.classList.toggle('d-none', !show);
-            if (show) visibleCount++;
+            item.dataset.matches = (matchesTags && matchesSearch) ? 'true' : 'false';
+
+            if (item.dataset.pinned === 'true') {
+                item.classList.toggle('d-none', !showPinned);
+            }
         });
 
-        if (noMatchAlert) noMatchAlert.classList.toggle('d-none', visibleCount !== 0);
+        if (resetPage) currentPage = 1;
+        renderPagination();
+    }
+
+    function getMatchingUnpinnedItems() {
+        if (!itemList) return [];
+        return [...itemList.querySelectorAll('.list-group-item[data-tags]')]
+            .filter(item => item.dataset.matches === 'true');
+    }
+
+    function renderPagination() {
+        if (!itemList) return;
+
+        const unpinnedItems = [...itemList.querySelectorAll('.list-group-item[data-tags]')];
+        const matchingItems = getMatchingUnpinnedItems();
+        const totalPages = Math.max(1, Math.ceil(matchingItems.length / itemsPerPage));
+        currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+
+        unpinnedItems.forEach(item => {
+            const index = matchingItems.indexOf(item);
+            const visible = index !== -1 && index >= start && index < end;
+            item.classList.toggle('d-none', !visible);
+        });
+
+        renderPaginationControls(totalPages);
+
+        const pinnedMatches = (showPinned && pinnedList)
+            ? [...pinnedList.querySelectorAll('.list-group-item[data-tags]')]
+                .filter(item => item.dataset.matches === 'true').length
+            : 0;
+        if (noMatchAlert) noMatchAlert.classList.toggle('d-none', matchingItems.length + pinnedMatches !== 0);
+
         updateLayout();
+    }
+
+    function getPageWindow(totalPages) {
+        const delta = 2;
+        const pages = [];
+        let last = 0;
+        for (let page = 1; page <= totalPages; page++) {
+            if (page === 1 || page === totalPages || (page >= currentPage - delta && page <= currentPage + delta)) {
+                if (last && page - last > 1) pages.push('...');
+                pages.push(page);
+                last = page;
+            }
+        }
+        return pages;
+    }
+
+    function createPageItem(content, page, { disabled = false, active = false, label = '' } = {}) {
+        const li = document.createElement('li');
+        li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'page-link';
+        button.innerHTML = content;
+        if (label) button.setAttribute('aria-label', label);
+        if (disabled) button.disabled = true;
+        if (active) button.setAttribute('aria-current', 'page');
+        button.addEventListener('click', () => goToPage(page));
+
+        li.appendChild(button);
+        return li;
+    }
+
+    function renderPaginationControls(totalPages) {
+        if (!pagination || !paginationNav) return;
+        pagination.innerHTML = '';
+        paginationNav.classList.toggle('d-none', totalPages <= 1);
+        if (totalPages <= 1) return;
+
+        pagination.appendChild(createPageItem('&laquo;', currentPage - 1, {
+            disabled: currentPage === 1,
+            label: 'Previous',
+        }));
+
+        getPageWindow(totalPages).forEach(page => {
+            if (page === '...') {
+                const li = document.createElement('li');
+                li.className = 'page-item disabled';
+                li.innerHTML = '<span class="page-link">&hellip;</span>';
+                pagination.appendChild(li);
+            } else {
+                pagination.appendChild(createPageItem(String(page), page, { active: page === currentPage }));
+            }
+        });
+
+        pagination.appendChild(createPageItem('&raquo;', currentPage + 1, {
+            disabled: currentPage === totalPages,
+            label: 'Next',
+        }));
+    }
+
+    function goToPage(page) {
+        if (page < 1) return;
+        currentPage = page;
+        renderPagination();
+        if (itemList) {
+            const top = itemList.getBoundingClientRect().top + window.pageYOffset - 100;
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
     }
 
     if (togglePinnedBtn) {
@@ -178,7 +308,7 @@
                 const item = button.closest('.list-group-item');
                 if (data.pinned) moveItemToPinned(item);
                 else moveItemToUnpinned(item);
-                filterItems();
+                filterItems(false);
             });
     }
 
@@ -229,7 +359,17 @@
         button.addEventListener('click', () => togglePin(button));
     });
 
-    checkboxes.forEach(cb => cb.addEventListener('change', filterItems));
+    checkboxes.forEach(cb => cb.addEventListener('change', () => filterItems()));
+    if (itemsPerPageSelect) {
+        itemsPerPageSelect.addEventListener('change', () => {
+            const value = parseInt(itemsPerPageSelect.value, 10);
+            if (!PER_PAGE_OPTIONS.includes(value)) return;
+            itemsPerPage = value;
+            localStorage.setItem('itemsPerPage', String(itemsPerPage));
+            currentPage = 1;
+            renderPagination();
+        });
+    }
     searchInput.addEventListener('input', () => {
         query = searchInput.value;
         filterItems();

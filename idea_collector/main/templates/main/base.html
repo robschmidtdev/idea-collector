@@ -64,6 +64,7 @@
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('.pin-btn');
             if (!btn) return;
+            if (btn.closest('#itemList, #pinnedList')) return;
 
             e.preventDefault();
 
