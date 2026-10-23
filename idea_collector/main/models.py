@@ -140,6 +140,30 @@ class UserFilterPreference(models.Model):
         return f"Filter preferences - {self.user}"
 
 
+class CustomFilter(models.Model):
+    name = models.CharField(max_length=100)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="custom_filters",
+    )
+    items = models.ManyToManyField(
+        Item,
+        blank=True,
+        related_name="custom_filters",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Custom filter"
+        verbose_name_plural = "Custom filters"
+
+    def __str__(self):
+        return self.name
+
+
 class ItemImage(models.Model):
     item = models.ForeignKey(
         Item,

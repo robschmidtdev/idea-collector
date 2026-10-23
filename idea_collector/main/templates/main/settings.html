@@ -117,6 +117,108 @@
                 </div>
             </div>
 
+            <div class="card shadow-sm mt-4" id="custom-filters">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="card-title mb-0">Manage Custom Filters</h4>
+
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#customFilterModal" onclick="openCreateCustomFilterModal()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Items</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for custom_filter in custom_filters %}
+                                <tr>
+                                    <td class="fw-bold">{{ custom_filter.name }}</td>
+                                    <td>{{ custom_filter.items.all|length }}</td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="modal" data-bs-target="#customFilterModal"
+                                                onclick="openEditCustomFilterModal('{{ custom_filter.pk }}', '{{ custom_filter.name|escapejs }}', '{{ custom_filter.item_ids|join:',' }}')">
+                                            Edit
+                                        </button>
+
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal" data-bs-target="#deleteCustomFilterModal{{ custom_filter.pk }}">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No custom filters created yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% for custom_filter in custom_filters %}
+                <div class="modal fade" id="deleteCustomFilterModal{{ custom_filter.pk }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="custom_filter_id" value="{{ custom_filter.pk }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Delete Custom Filter</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to delete the custom filter <strong>{{ custom_filter.name }}</strong>?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" name="delete_custom_filter" class="btn btn-danger">Delete</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="modal fade" id="customFilterModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form method="post" id="customFilterFormElement">
+                            {% csrf_token %}
+                            <input type="hidden" name="custom_filter_id" id="modalCustomFilterId">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="customFilterModalTitle">Add Custom Filter</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="{{ custom_filter_form.name.id_for_label }}" class="form-label">Filter Name</label>
+                                    {{ custom_filter_form.name }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ custom_filter_form.items.id_for_label }}" class="form-label">Items</label>
+                                    {{ custom_filter_form.items }}
+                                    <div class="form-text">Hold Ctrl (Cmd on Mac) to select multiple items.</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" name="save_custom_filter" class="btn btn-primary">Save Filter</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <div class="modal fade" id="tagModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -159,6 +261,28 @@
                     document.getElementById('modalTagId').value = id;
                     document.getElementById('modalTagName').value = name;
                     document.getElementById('modalTagColor').value = color;
+                }
+
+                function setCustomFilterItems(ids) {
+                    const select = document.getElementById('id_items');
+                    const wanted = new Set(ids.map(String));
+                    Array.from(select.options).forEach(option => {
+                        option.selected = wanted.has(option.value);
+                    });
+                }
+
+                function openCreateCustomFilterModal() {
+                    document.getElementById('customFilterModalTitle').innerText = 'Add Custom Filter';
+                    document.getElementById('modalCustomFilterId').value = '';
+                    document.getElementById('id_name').value = '';
+                    setCustomFilterItems([]);
+                }
+
+                function openEditCustomFilterModal(id, name, itemIds) {
+                    document.getElementById('customFilterModalTitle').innerText = 'Edit Custom Filter';
+                    document.getElementById('modalCustomFilterId').value = id;
+                    document.getElementById('id_name').value = name;
+                    setCustomFilterItems(itemIds.split(',').filter(Boolean));
                 }
             </script>
 

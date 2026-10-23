@@ -5,8 +5,9 @@ from django.contrib import messages
 from django.forms import modelform_factory
 from django.http import JsonResponse
 from django.db import models
-from .forms import ItemForm, TagForm
+from .forms import CustomFilterForm, ItemForm, TagForm
 from .models import (
+    CustomFilter,
     Item,
     ItemAudio,
     ItemImage,
@@ -30,6 +31,7 @@ def settings_view(request):
 
     settings_form = SiteSettingsForm(instance=settings_obj)
     tag_form = TagForm()
+    custom_filter_form = CustomFilterForm()
 
     if request.method == 'POST':
         if 'save_settings' in request.POST:
@@ -59,9 +61,49 @@ def settings_view(request):
             messages.success(request, 'Tag deleted successfully!')
             return redirect('settings')
 
+        elif 'save_custom_filter' in request.POST and request.user.is_authenticated:
+            custom_filter_id = request.POST.get('custom_filter_id')
+            if custom_filter_id:
+                custom_filter_instance = get_object_or_404(
+                    CustomFilter, pk=custom_filter_id, user=request.user
+                )
+                custom_filter_form = CustomFilterForm(
+                    request.POST, instance=custom_filter_instance
+                )
+            else:
+                custom_filter_form = CustomFilterForm(request.POST)
+
+            if custom_filter_form.is_valid():
+                custom_filter = custom_filter_form.save(commit=False)
+                custom_filter.user = request.user
+                custom_filter.save()
+                custom_filter_form.save_m2m()
+                messages.success(request, 'Custom filter saved successfully!')
+                return redirect('settings')
+
+        elif 'delete_custom_filter' in request.POST and request.user.is_authenticated:
+            custom_filter = get_object_or_404(
+                CustomFilter,
+                pk=request.POST.get('custom_filter_id'),
+                user=request.user,
+            )
+            custom_filter.delete()
+            messages.success(request, 'Custom filter deleted successfully!')
+            return redirect('settings')
+
+    custom_filters = []
+    if request.user.is_authenticated:
+        custom_filters = list(
+            CustomFilter.objects.filter(user=request.user).prefetch_related("items")
+        )
+        for custom_filter in custom_filters:
+            custom_filter.item_ids = [item.pk for item in custom_filter.items.all()]
+
     context = {
         'form': settings_form,    
         'tag_form': tag_form,      
+        'custom_filter_form': custom_filter_form,
+        'custom_filters': custom_filters,
         'tags': tags,               
     }
     return render(request, 'main/settings.html', context)
@@ -69,14 +111,15 @@ def settings_view(request):
 
 def items(request):
     pinned_items = Item.objects.filter(pinned=True).prefetch_related(
-        "tags", "images", "videos", "audios", "referenced_items", "created_by"
+        "tags", "images", "videos", "audios", "referenced_items", "custom_filters", "created_by"
     ).order_by("pin_order", "name")
     unpinned_items = Item.objects.filter(pinned=False).prefetch_related(
-        "tags", "images", "videos", "audios", "referenced_items", "created_by"
+        "tags", "images", "videos", "audios", "referenced_items", "custom_filters", "created_by"
     ).order_by("name")
 
     visible_filters = []
     sort_order = "name_asc"
+    custom_filters = []
     if request.user.is_authenticated:
         preference = UserFilterPreference.objects.filter(user=request.user).first()
         if preference:
@@ -86,6 +129,7 @@ def items(request):
             ]
             if preference.sort_order in SORT_ORDER_VALUES:
                 sort_order = preference.sort_order
+        custom_filters = CustomFilter.objects.filter(user=request.user)
 
     return render(
         request,
@@ -97,6 +141,7 @@ def items(request):
             "tags": Tag.objects.all(),
             "color_choices": Item.COLOR_CHOICES,
             "sort_choices": UserFilterPreference.SORT_CHOICES,
+            "custom_filters": custom_filters,
             "visible_filters": visible_filters,
             "sort_order": sort_order,
             "filter_prefs_in_db": request.user.is_authenticated,

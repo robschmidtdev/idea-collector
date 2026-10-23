@@ -1,5 +1,5 @@
 from django import forms
-from .models import Item, Tag
+from .models import CustomFilter, Item, Tag
 
 
 class ItemForm(forms.ModelForm):
@@ -28,4 +28,14 @@ class TagForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tag name"}),
             "color": forms.TextInput(attrs={"type": "color", "class": "form-control form-control-color"}),
+        }
+
+
+class CustomFilterForm(forms.ModelForm):
+    class Meta:
+        model = CustomFilter
+        fields = ["name", "items"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Filter name"}),
+            "items": forms.SelectMultiple(attrs={"class": "form-select", "size": 12}),
         }

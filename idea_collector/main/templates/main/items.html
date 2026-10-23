@@ -21,6 +21,11 @@
 
     <div class="row mb-3 g-2 align-items-center">
         <div class="col-auto">
+            <a href="{% url 'item_create' %}" class="btn btn-secondary text-nowrap">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+        <div class="col-auto">
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                     <i class="bi bi-funnel"></i> Filter by Tags
@@ -99,7 +104,7 @@
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="addFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                     <i class="bi bi-sliders"></i> Filter / Sort
                 </button>
-                <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="addFilterDropdown">
+                <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="addFilterDropdown" style="max-height: 70vh; overflow-y: auto;">
                     <div class="form-check">
                         <input class="form-check-input add-filter-toggle" type="checkbox" value="color" id="add-filter-color">
                         <label class="form-check-label" for="add-filter-color"><i class="bi bi-palette"></i> Color</label>
@@ -109,6 +114,18 @@
                         <label class="form-check-label" for="add-filter-media"><i class="bi bi-paperclip"></i> Media</label>
                     </div>
                     <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">Custom filters</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" data-filter="pinned-only" value="1" id="filter-pinned-only">
+                        <label class="form-check-label" for="filter-pinned-only"><i class="bi bi-pin-fill"></i> Pinned Only</label>
+                    </div>
+                    {% for custom_filter in custom_filters %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-filter="custom" value="{{ custom_filter.pk }}" id="filter-custom-{{ custom_filter.pk }}">
+                            <label class="form-check-label" for="filter-custom-{{ custom_filter.pk }}">{{ custom_filter.name }}</label>
+                        </div>
+                    {% endfor %}
+                    <div class="dropdown-divider"></div>
                     <h6 class="dropdown-header">Sort by</h6>
                     {% for value, label in sort_choices %}
                         <div class="form-check">
@@ -116,6 +133,8 @@
                             <label class="form-check-label" for="sort-{{ value }}">{{ label }}</label>
                         </div>
                     {% endfor %}
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{% url 'settings' %}#custom-filters"><i class="bi bi-gear"></i> Manage Custom Filters</a>
                 </div>
             </div>
         </div>
@@ -291,6 +310,9 @@
         const searchTerm = query.trim().toLowerCase();
         const selectedColors = getSelectedFilterValues('color');
         const selectedMedia = getSelectedFilterValues('media');
+        const selectedCustomFilters = getSelectedFilterValues('custom');
+        const pinnedOnlyFilter = document.getElementById('filter-pinned-only');
+        const pinnedOnlyActive = pinnedOnlyFilter ? pinnedOnlyFilter.checked : false;
 
         document.querySelectorAll('.list-group-item[data-tags]').forEach(item => {
             const itemTags = item.dataset.tags.split(',').filter(Boolean);
@@ -303,7 +325,10 @@
             if (item.dataset.hasAudios === 'true') itemMedia.push('audios');
             if (item.dataset.hasReferences === 'true') itemMedia.push('references');
             const matchesMedia = selectedMedia.size === 0 || itemMedia.some(media => selectedMedia.has(media));
-            item.dataset.matches = (matchesTags && matchesSearch && matchesColor && matchesMedia) ? 'true' : 'false';
+            const itemCustomFilters = (item.dataset.customFilters || '').split(',').filter(Boolean);
+            const matchesCustomFilters = selectedCustomFilters.size === 0 || itemCustomFilters.some(pk => selectedCustomFilters.has(pk));
+            const matchesPinnedOnly = !pinnedOnlyActive || item.dataset.pinned === 'true';
+            item.dataset.matches = (matchesTags && matchesSearch && matchesColor && matchesMedia && matchesCustomFilters && matchesPinnedOnly) ? 'true' : 'false';
 
             if (item.dataset.pinned === 'true') {
                 item.classList.toggle('d-none', !showPinned);
@@ -523,7 +548,14 @@
 
     checkboxes.forEach(cb => cb.addEventListener('change', () => filterItems()));
     document.querySelectorAll('input[data-filter]').forEach(input => {
-        input.addEventListener('change', () => filterItems());
+        input.addEventListener('change', () => {
+            if (input.dataset.filter === 'pinned-only' && input.checked && !showPinned) {
+                showPinned = true;
+                localStorage.setItem('showPinned', true);
+                updatePinnedToggleUI();
+            }
+            filterItems();
+        });
     });
     document.querySelectorAll('.add-filter-toggle').forEach(toggle => {
         toggle.addEventListener('change', () => {
