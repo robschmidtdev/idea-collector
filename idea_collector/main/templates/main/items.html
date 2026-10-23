@@ -20,7 +20,7 @@
         <div class="col-auto">
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="tagFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <i class="bi bi-funnel"></i> Filter by tags
+                    <i class="bi bi-funnel"></i> Filter by Tags
                 </button>
                 
                 <div class="dropdown-menu p-2" aria-labelledby="tagFilterDropdown">
@@ -45,6 +45,9 @@
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="search" class="form-control" id="searchInput" placeholder="Search" autocomplete="off">
             </div>
+        </div>
+        <div class="col-auto">
+            <span class="btn btn-secondary disabled text-nowrap" id="itemCount" role="status" aria-live="polite" aria-disabled="true"></span>
         </div>
     </div>
 
@@ -97,6 +100,7 @@
     const paginationNav = document.getElementById('paginationNav');
     const pagination = document.getElementById('pagination');
     const itemsPerPageSelect = document.getElementById('itemsPerPageSelect');
+    const itemCount = document.getElementById('itemCount');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const PER_PAGE_OPTIONS = [3, 5, 10, 25, 50];
     let itemsPerPage = parseInt(localStorage.getItem('itemsPerPage'), 10);
@@ -163,10 +167,16 @@
     }
 
     function renderPagination() {
+        const matchingItems = getMatchingUnpinnedItems();
+        const pinnedCount = (showPinned && pinnedList)
+            ? pinnedList.querySelectorAll('.list-group-item[data-tags]').length
+            : 0;
+        const totalMatches = pinnedCount + matchingItems.length;
+        updateItemCount(totalMatches);
+
         if (!itemList) return;
 
         const unpinnedItems = [...itemList.querySelectorAll('.list-group-item[data-tags]')];
-        const matchingItems = getMatchingUnpinnedItems();
         const totalPages = Math.max(1, Math.ceil(matchingItems.length / itemsPerPage));
         currentPage = Math.min(Math.max(currentPage, 1), totalPages);
 
@@ -181,13 +191,14 @@
 
         renderPaginationControls(totalPages);
 
-        const pinnedMatches = (showPinned && pinnedList)
-            ? [...pinnedList.querySelectorAll('.list-group-item[data-tags]')]
-                .filter(item => item.dataset.matches === 'true').length
-            : 0;
-        if (noMatchAlert) noMatchAlert.classList.toggle('d-none', matchingItems.length + pinnedMatches !== 0);
+        if (noMatchAlert) noMatchAlert.classList.toggle('d-none', totalMatches !== 0);
 
         updateLayout();
+    }
+
+    function updateItemCount(total) {
+        if (!itemCount) return;
+        itemCount.textContent = `${total} Item${total === 1 ? '' : 's'}`;
     }
 
     function getPageWindow(totalPages) {
