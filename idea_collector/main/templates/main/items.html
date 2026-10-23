@@ -16,6 +16,7 @@
 
     {% csrf_token %}
     {{ visible_filters|json_script:"visibleFiltersData" }}
+    {{ sort_order|json_script:"sortOrderData" }}
     {{ filter_prefs_in_db|json_script:"filterPrefsInDb" }}
 
     <div class="row mb-3 g-2 align-items-center">
@@ -96,7 +97,7 @@
         <div class="col-auto">
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="addFilterDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    <i class="bi bi-plus-lg"></i> Filter
+                    <i class="bi bi-sliders"></i> Filter / Sort
                 </button>
                 <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="addFilterDropdown">
                     <div class="form-check">
@@ -107,6 +108,14 @@
                         <input class="form-check-input add-filter-toggle" type="checkbox" value="media" id="add-filter-media">
                         <label class="form-check-label" for="add-filter-media"><i class="bi bi-paperclip"></i> Media</label>
                     </div>
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">Sort by</h6>
+                    {% for value, label in sort_choices %}
+                        <div class="form-check">
+                            <input class="form-check-input sort-order-input" type="radio" name="sort-order" value="{{ value }}" id="sort-{{ value }}">
+                            <label class="form-check-label" for="sort-{{ value }}">{{ label }}</label>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -165,7 +174,9 @@
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const filterPrefsInDb = JSON.parse(document.getElementById('filterPrefsInDb').textContent);
     const storedVisibleFilters = JSON.parse(document.getElementById('visibleFiltersData').textContent);
+    const storedSortOrder = JSON.parse(document.getElementById('sortOrderData').textContent);
     let visibleFilters = new Set(storedVisibleFilters);
+    let sortOrder = storedSortOrder || 'name_asc';
     if (!filterPrefsInDb) {
         try {
             const localFilters = JSON.parse(localStorage.getItem('visibleFilters') || '[]');
@@ -173,6 +184,8 @@
         } catch (error) {
             visibleFilters = new Set();
         }
+        const localSortOrder = localStorage.getItem('sortOrder');
+        if (localSortOrder) sortOrder = localSortOrder;
     }
     const PER_PAGE_OPTIONS = [3, 5, 10, 25, 50];
     let itemsPerPage = parseInt(localStorage.getItem('itemsPerPage'), 10);
@@ -213,12 +226,16 @@
         document.querySelectorAll('.add-filter-toggle').forEach(toggle => {
             toggle.checked = visibleFilters.has(toggle.value);
         });
+        document.querySelectorAll('.sort-order-input').forEach(input => {
+            input.checked = input.value === sortOrder;
+        });
     }
 
-    function saveVisibleFilters() {
+    function savePreferences() {
         const values = Array.from(visibleFilters);
         if (!filterPrefsInDb) {
             localStorage.setItem('visibleFilters', JSON.stringify(values));
+            localStorage.setItem('sortOrder', sortOrder);
             return;
         }
         fetch('/filters/preferences/', {
@@ -227,8 +244,32 @@
                 'X-CSRFToken': csrfToken,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ visible_filters: values }),
+            body: JSON.stringify({
+                visible_filters: values,
+                sort_order: sortOrder,
+            }),
         });
+    }
+
+    function compareItems(a, b, field) {
+        if (field === 'created') return (a.dataset.created || '').localeCompare(b.dataset.created || '');
+        if (field === 'updated') return (a.dataset.updated || '').localeCompare(b.dataset.updated || '');
+        return (a.dataset.name || '').localeCompare(b.dataset.name || '', undefined, { sensitivity: 'base' });
+    }
+
+    function sortItems() {
+        if (!itemList) return;
+        const items = [...itemList.querySelectorAll('.list-group-item[data-tags]')];
+        const [field, direction] = sortOrder.split('_');
+        const factor = direction === 'desc' ? -1 : 1;
+
+        items.sort((a, b) => {
+            const result = compareItems(a, b, field);
+            if (result !== 0) return result * factor;
+            return compareItems(a, b, 'name');
+        });
+
+        items.forEach(item => itemList.appendChild(item));
     }
 
     function updateLayout() {
@@ -413,11 +454,8 @@
         item.classList.remove('pinned', 'pinned-item');
         item.draggable = false;
         setPinButton(item.querySelector('.pin-btn'), false);
-        const name = (item.dataset.name || '').toLowerCase();
-        const target = [...itemList.querySelectorAll('.list-group-item')]
-            .find(el => (el.dataset.name || '').toLowerCase() > name);
-        if (target) itemList.insertBefore(item, target);
-        else itemList.appendChild(item);
+        itemList.appendChild(item);
+        sortItems();
         updateLayout();
     }
 
@@ -499,7 +537,15 @@
             }
             updateExtraFiltersUI();
             filterItems();
-            saveVisibleFilters();
+            savePreferences();
+        });
+    });
+    document.querySelectorAll('.sort-order-input').forEach(input => {
+        input.addEventListener('change', () => {
+            sortOrder = input.value;
+            sortItems();
+            filterItems();
+            savePreferences();
         });
     });
     if (itemsPerPageSelect) {
@@ -518,6 +564,7 @@
     });
 
     updateExtraFiltersUI();
+    sortItems();
     filterItems();
 
     window.addEventListener('pageshow', function(event) {

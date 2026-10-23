@@ -53,13 +53,13 @@ class Tag(models.Model):
 
 class Item(models.Model):
     COLOR_CHOICES = [
-        ("primary", "Primary (Blue)"),
-        ("secondary", "Secondary (Gray)"),
-        ("success", "Success (Green)"),
-        ("danger", "Danger (Red)"),
-        ("warning", "Warning (Yellow)"),
-        ("info", "Info (Light Blue)"),
-        ("light", "Light (Very Light)"),
+        ("primary", "Blue"),
+        ("secondary", "Gray"),
+        ("success", "Green"),
+        ("danger", "Red"),
+        ("warning", "Yellow"),
+        ("info", "Light Blue"),
+        ("light", "Light Gray"),
     ]
 
     name = models.CharField(max_length=255)
@@ -111,12 +111,26 @@ class Item(models.Model):
 
 
 class UserFilterPreference(models.Model):
+    SORT_CHOICES = [
+        ("name_asc", "Name (A-Z)"),
+        ("name_desc", "Name (Z-A)"),
+        ("created_asc", "Created (oldest first)"),
+        ("created_desc", "Created (newest first)"),
+        ("updated_asc", "Updated (oldest first)"),
+        ("updated_desc", "Updated (newest first)"),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="filter_preferences",
     )
     visible_filters = models.JSONField(default=list, blank=True)
+    sort_order = models.CharField(
+        max_length=20,
+        choices=SORT_CHOICES,
+        default="name_asc",
+    )
 
     class Meta:
         verbose_name = "User filter preference"

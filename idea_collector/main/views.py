@@ -17,6 +17,7 @@ from .models import (
 )
 
 EXTRA_FILTER_KEYS = ("color", "media")
+SORT_ORDER_VALUES = {value for value, _ in UserFilterPreference.SORT_CHOICES}
 
 SiteSettingsForm = modelform_factory(
     SiteSettings, fields=['title', 'primary_color']
@@ -75,6 +76,7 @@ def items(request):
     ).order_by("name")
 
     visible_filters = []
+    sort_order = "name_asc"
     if request.user.is_authenticated:
         preference = UserFilterPreference.objects.filter(user=request.user).first()
         if preference:
@@ -82,6 +84,8 @@ def items(request):
                 key for key in preference.visible_filters
                 if key in EXTRA_FILTER_KEYS
             ]
+            if preference.sort_order in SORT_ORDER_VALUES:
+                sort_order = preference.sort_order
 
     return render(
         request,
@@ -92,7 +96,9 @@ def items(request):
             "unpinned_items": unpinned_items,
             "tags": Tag.objects.all(),
             "color_choices": Item.COLOR_CHOICES,
+            "sort_choices": UserFilterPreference.SORT_CHOICES,
             "visible_filters": visible_filters,
+            "sort_order": sort_order,
             "filter_prefs_in_db": request.user.is_authenticated,
         },
     )
@@ -117,9 +123,14 @@ def filter_preferences(request):
         key for key in visible_filters if key in EXTRA_FILTER_KEYS
     ]
 
+    sort_order = data.get("sort_order", "name_asc")
+    if sort_order not in SORT_ORDER_VALUES:
+        sort_order = "name_asc"
+
     preference, _ = UserFilterPreference.objects.get_or_create(user=request.user)
     preference.visible_filters = visible_filters
-    preference.save(update_fields=["visible_filters"])
+    preference.sort_order = sort_order
+    preference.save(update_fields=["visible_filters", "sort_order"])
     return JsonResponse({"ok": True})
 
 
