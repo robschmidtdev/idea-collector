@@ -57,7 +57,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 
-    'main.middleware.AutoLoginMiddleware',
+    'main.middleware.LoginRequiredWhenAccountExistsMiddleware',
 
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -76,6 +76,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'main.context_processors.site_settings',
+                'main.context_processors.account_status',
             ],
         },
     },
@@ -91,7 +92,7 @@ CKEDITOR_5_CONFIGS = {
             'items': [
                 'heading', '|',
                 'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
-                'bulletedList', 'numberedList', 'outdent', 'indent', 'blockQuote', '|',
+                'bulletedList', 'numberedList', 'todoList', 'outdent', 'indent', 'blockQuote', '|',
                 'alignment', '|',
                 'link', 'insertImage', '|',
                 'insertTable', 'horizontalLine', 'specialCharacters', '|',
@@ -117,6 +118,14 @@ CKEDITOR_5_CONFIGS = {
 }
 
 WSGI_APPLICATION = 'idea_collector.wsgi.application'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'items'
+LOGOUT_REDIRECT_URL = 'login'
+
+# The session ends when the browser is closed, so the login is required again
+# on the next visit.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 
 # Database

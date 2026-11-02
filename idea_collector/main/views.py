@@ -2,10 +2,17 @@ import json
 
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
+from django.contrib.auth import login, logout as auth_logout
+from django.contrib.auth.models import User
 from django.forms import modelform_factory
 from django.http import JsonResponse
 from django.db import models
-from .forms import CustomFilterForm, ItemForm, TagForm
+from .forms import (
+    CustomFilterForm,
+    ItemForm,
+    StyledUserCreationForm,
+    TagForm,
+)
 from .models import (
     CustomFilter,
     Item,
@@ -32,6 +39,12 @@ def settings_view(request):
     tag_form = TagForm()
     custom_filter_form = CustomFilterForm()
 
+    can_register = not User.objects.exists()
+    registration_form = None
+
+    if not request.user.is_authenticated and can_register:
+        registration_form = StyledUserCreationForm()
+
     if request.method == 'POST':
         if 'save_settings' in request.POST:
             settings_form = SiteSettingsForm(request.POST, instance=settings_obj)
@@ -39,6 +52,30 @@ def settings_view(request):
                 settings_form.save()
                 messages.success(request, 'Settings saved successfully!')
                 return redirect('settings')
+
+        elif 'create_account' in request.POST and not request.user.is_authenticated:
+            if not User.objects.exists():
+                registration_form = StyledUserCreationForm(request.POST)
+                if registration_form.is_valid():
+                    user = registration_form.save()
+                    login(
+                        request,
+                        user,
+                        backend="django.contrib.auth.backends.ModelBackend",
+                    )
+                    messages.success(
+                        request, 'Account created. You are now signed in.'
+                    )
+                    return redirect('settings')
+
+        elif 'delete_account' in request.POST and request.user.is_authenticated:
+            user = request.user
+            auth_logout(request)
+            user.delete()
+            messages.success(
+                request, 'Account deleted. The app is now accessible without login.'
+            )
+            return redirect('settings')
 
         elif 'save_tag' in request.POST:
             tag_id = request.POST.get('tag_id')
@@ -60,11 +97,11 @@ def settings_view(request):
             messages.success(request, 'Tag deleted successfully!')
             return redirect('settings')
 
-        elif 'save_custom_filter' in request.POST and request.user.is_authenticated:
+        elif 'save_custom_filter' in request.POST:
             custom_filter_id = request.POST.get('custom_filter_id')
             if custom_filter_id:
                 custom_filter_instance = get_object_or_404(
-                    CustomFilter, pk=custom_filter_id, user=request.user
+                    CustomFilter, pk=custom_filter_id
                 )
                 custom_filter_form = CustomFilterForm(
                     request.POST, instance=custom_filter_instance
@@ -74,29 +111,25 @@ def settings_view(request):
 
             if custom_filter_form.is_valid():
                 custom_filter = custom_filter_form.save(commit=False)
-                custom_filter.user = request.user
                 custom_filter.save()
                 custom_filter_form.save_m2m()
                 messages.success(request, 'Custom filter saved successfully!')
                 return redirect('settings')
 
-        elif 'delete_custom_filter' in request.POST and request.user.is_authenticated:
+        elif 'delete_custom_filter' in request.POST:
             custom_filter = get_object_or_404(
                 CustomFilter,
                 pk=request.POST.get('custom_filter_id'),
-                user=request.user,
             )
             custom_filter.delete()
             messages.success(request, 'Custom filter deleted successfully!')
             return redirect('settings')
 
-    custom_filters = []
-    if request.user.is_authenticated:
-        custom_filters = list(
-            CustomFilter.objects.filter(user=request.user).prefetch_related("items")
-        )
-        for custom_filter in custom_filters:
-            custom_filter.item_ids = [item.pk for item in custom_filter.items.all()]
+    custom_filters = list(
+        CustomFilter.objects.all().prefetch_related("items")
+    )
+    for custom_filter in custom_filters:
+        custom_filter.item_ids = [item.pk for item in custom_filter.items.all()]
 
     context = {
         'form': settings_form,    
@@ -104,31 +137,37 @@ def settings_view(request):
         'custom_filter_form': custom_filter_form,
         'custom_filters': custom_filters,
         'tags': tags,               
+        'registration_form': registration_form,
+        'can_register': can_register,
     }
     return render(request, 'main/settings.html', context)
 
 
+def logout_view(request):
+    if request.method != 'POST':
+        return redirect('items')
+    auth_logout(request)
+    return redirect('login')
+
+
 def items(request):
     pinned_items = Item.objects.filter(pinned=True).prefetch_related(
-        "tags", "videos", "audios", "referenced_items", "custom_filters", "created_by"
+        "tags", "videos", "audios", "referenced_items", "custom_filters"
     ).order_by("pin_order", "name")
     unpinned_items = Item.objects.filter(pinned=False).prefetch_related(
-        "tags", "videos", "audios", "referenced_items", "custom_filters", "created_by"
+        "tags", "videos", "audios", "referenced_items", "custom_filters"
     ).order_by("name")
 
     visible_filters = []
     sort_order = "name_asc"
-    custom_filters = []
-    if request.user.is_authenticated:
-        preference = UserFilterPreference.objects.filter(user=request.user).first()
-        if preference:
-            visible_filters = [
-                key for key in preference.visible_filters
-                if key in EXTRA_FILTER_KEYS
-            ]
-            if preference.sort_order in SORT_ORDER_VALUES:
-                sort_order = preference.sort_order
-        custom_filters = CustomFilter.objects.filter(user=request.user)
+    preference = UserFilterPreference.objects.first()
+    if preference:
+        visible_filters = [
+            key for key in preference.visible_filters
+            if key in EXTRA_FILTER_KEYS
+        ]
+        if preference.sort_order in SORT_ORDER_VALUES:
+            sort_order = preference.sort_order
 
     return render(
         request,
@@ -140,10 +179,10 @@ def items(request):
             "tags": Tag.objects.all(),
             "color_choices": Item.COLOR_CHOICES,
             "sort_choices": UserFilterPreference.SORT_CHOICES,
-            "custom_filters": custom_filters,
+            "custom_filters": CustomFilter.objects.all(),
             "visible_filters": visible_filters,
             "sort_order": sort_order,
-            "filter_prefs_in_db": request.user.is_authenticated,
+            "filter_prefs_in_db": True,
         },
     )
 
@@ -151,8 +190,6 @@ def items(request):
 def filter_preferences(request):
     if request.method != "POST":
         return JsonResponse({"ok": False}, status=405)
-    if not request.user.is_authenticated:
-        return JsonResponse({"ok": False}, status=403)
 
     try:
         data = json.loads(request.body or "{}")
@@ -171,7 +208,7 @@ def filter_preferences(request):
     if sort_order not in SORT_ORDER_VALUES:
         sort_order = "name_asc"
 
-    preference, _ = UserFilterPreference.objects.get_or_create(user=request.user)
+    preference, _ = UserFilterPreference.objects.get_or_create(pk=1)
     preference.visible_filters = visible_filters
     preference.sort_order = sort_order
     preference.save(update_fields=["visible_filters", "sort_order"])
@@ -236,10 +273,7 @@ def item_create(request):
     if request.method == "POST":
         form = ItemForm(request.POST)
         if form.is_valid():
-            item = form.save(commit=False)
-            if request.user.is_authenticated:
-                item.created_by = request.user
-            item.save()
+            item = form.save()
             form.save_m2m()
 
             _save_media(item, request)

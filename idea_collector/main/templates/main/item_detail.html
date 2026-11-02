@@ -63,13 +63,7 @@
             {% endif %}
 
             <p class="text-muted">
-                Created by: 
-                {% if item.created_by %}
-                    {{ item.created_by.username }}
-                {% else %}
-                    Unknown
-                {% endif %} 
-                on {{ item.created_at|date:"Y-m-d H:i" }}
+                Created on {{ item.created_at|date:"Y-m-d H:i" }}
             </p>
             <hr>
             <div class="item-description ck-content fs-5">

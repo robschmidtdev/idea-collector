@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from django_ckeditor_5.fields import CKEditor5Field
 from django.utils.html import strip_tags
 import html
@@ -90,14 +89,6 @@ class Item(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_items",
-    )
-
     def get_plain_description(self):
         plain_text = strip_tags(self.description)
         return html.unescape(plain_text).strip()
@@ -121,11 +112,6 @@ class UserFilterPreference(models.Model):
         ("updated_desc", "Updated (newest first)"),
     ]
 
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="filter_preferences",
-    )
     visible_filters = models.JSONField(default=list, blank=True)
     sort_order = models.CharField(
         max_length=20,
@@ -138,16 +124,11 @@ class UserFilterPreference(models.Model):
         verbose_name_plural = "User filter preferences"
 
     def __str__(self):
-        return f"Filter preferences - {self.user}"
+        return "Filter preferences"
 
 
 class CustomFilter(models.Model):
     name = models.CharField(max_length=100)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="custom_filters",
-    )
     items = models.ManyToManyField(
         Item,
         blank=True,
