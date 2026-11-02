@@ -8,7 +8,6 @@ class ItemForm(forms.ModelForm):
         fields = ['name', 'description', 'tags', 'color', 'referenced_items']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control'}),
             'tags': forms.SelectMultiple(attrs={'class': 'form-select'}),
             'color': forms.Select(attrs={'class': 'form-select'}),
             'referenced_items': forms.SelectMultiple(attrs={'class': 'form-select'}),

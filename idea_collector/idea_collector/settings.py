@@ -35,7 +35,6 @@ ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split('
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.getenv('DJANGO_MEDIA_ROOT', str(BASE_DIR / 'media'))
-CKEDITOR_UPLOAD_PATH = "content/ckeditor/"
 
 
 # Application definition
@@ -48,8 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main',
-    "ckeditor",
-    "ckeditor_uploader",
+    'django_ckeditor_5',
 ]
 
 MIDDLEWARE = [
@@ -83,26 +81,38 @@ TEMPLATES = [
     },
 ]
 
-CKEDITOR_CONFIGS = {
+CKEDITOR_5_FILE_STORAGE = "main.storage.CKEditor5Storage"
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "authenticated"
+CKEDITOR_5_IMAGE_CLEANUP = True
+
+CKEDITOR_5_CONFIGS = {
     'default': {
-        'toolbar': 'Custom',
-        'toolbar_Custom': [
-            ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'],
-            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote'],
-            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
-            ['Link', 'Unlink'],
-            ['Table', 'HorizontalRule', 'SpecialChar'],
-            ['Styles', 'Format', 'Font', 'FontSize'],
-            ['TextColor', 'BGColor'],
-            ['Maximize', 'Source'],
-        ],
-        'height': 300,
-        'width': '100%',
-        'extraPlugins': ','.join([
-            'table',
-            'tabletools',
-            'tableresize',
-        ]),
+        'toolbar': {
+            'items': [
+                'heading', '|',
+                'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
+                'bulletedList', 'numberedList', 'outdent', 'indent', 'blockQuote', '|',
+                'alignment', '|',
+                'link', 'insertImage', '|',
+                'insertTable', 'horizontalLine', 'specialCharacters', '|',
+                'fontFamily', 'fontSize', 'fontColor', 'fontBackgroundColor', '|',
+                'sourceEditing', 'showBlocks',
+            ],
+            'shouldNotGroupWhenFull': True,
+        },
+        'image': {
+            'toolbar': [
+                'imageTextAlternative', '|',
+                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
+            ],
+            'styles': ['alignLeft', 'alignCenter', 'alignRight'],
+        },
+        'table': {
+            'contentToolbar': [
+                'tableColumn', 'tableRow', 'mergeTableCells',
+                'tableProperties', 'tableCellProperties',
+            ],
+        },
     },
 }
 
@@ -155,6 +165,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

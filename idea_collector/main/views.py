@@ -10,7 +10,6 @@ from .models import (
     CustomFilter,
     Item,
     ItemAudio,
-    ItemImage,
     ItemVideo,
     SiteSettings,
     Tag,
@@ -111,10 +110,10 @@ def settings_view(request):
 
 def items(request):
     pinned_items = Item.objects.filter(pinned=True).prefetch_related(
-        "tags", "images", "videos", "audios", "referenced_items", "custom_filters", "created_by"
+        "tags", "videos", "audios", "referenced_items", "custom_filters", "created_by"
     ).order_by("pin_order", "name")
     unpinned_items = Item.objects.filter(pinned=False).prefetch_related(
-        "tags", "images", "videos", "audios", "referenced_items", "custom_filters", "created_by"
+        "tags", "videos", "audios", "referenced_items", "custom_filters", "created_by"
     ).order_by("name")
 
     visible_filters = []
@@ -205,7 +204,7 @@ def item_reorder(request):
 
 def item_detail(request, pk):
     item = get_object_or_404(
-        Item.objects.prefetch_related("tags", "images", "videos", "audios", "referenced_items", "referenced_items__tags"),
+        Item.objects.prefetch_related("tags", "videos", "audios", "referenced_items", "referenced_items__tags"),
         pk=pk,
     )
     context = {
@@ -216,8 +215,6 @@ def item_detail(request, pk):
 
 
 def _save_media(item, request):
-    for f in request.FILES.getlist("images"):
-        ItemImage.objects.create(item=item, image=f)
     for f in request.FILES.getlist("videos"):
         ItemVideo.objects.create(item=item, video=f)
     for f in request.FILES.getlist("audios"):
@@ -231,7 +228,6 @@ def _delete_media(model, field, item, pks):
 
 
 def _delete_media_selection(item, request):
-    _delete_media(ItemImage, "image", item, request.POST.getlist("delete_images"))
     _delete_media(ItemVideo, "video", item, request.POST.getlist("delete_videos"))
     _delete_media(ItemAudio, "audio", item, request.POST.getlist("delete_audios"))
 
@@ -282,8 +278,6 @@ def item_delete(request, pk):
     if request.method != "POST":
         return redirect("item_detail", pk=item.pk)
 
-    for image in item.images.all():
-        image.image.delete(save=False)
     for video in item.videos.all():
         video.video.delete(save=False)
     for audio in item.audios.all():

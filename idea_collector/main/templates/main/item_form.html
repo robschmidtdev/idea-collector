@@ -4,6 +4,11 @@
 
 {% block extra_head %}
     {{ form.media }}
+    <style>
+        .ck-editor__editable_inline {
+            min-height: 300px;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -42,20 +47,8 @@
 
                 <h4 class="mb-3">Media</h4>
 
-                {% if item.images.all or item.videos.all or item.audios.all %}
+                {% if item.videos.all or item.audios.all %}
                     <p class="text-muted">Select existing media to delete it when saving.</p>
-
-                    {% if item.images.all %}
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Current Images</label>
-                            {% for img in item.images.all %}
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="delete_images" value="{{ img.pk }}" id="deleteImage{{ img.pk }}">
-                                    <label class="form-check-label" for="deleteImage{{ img.pk }}">{{ img.image.name }}</label>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
 
                     {% if item.videos.all %}
                         <div class="mb-3">
@@ -85,11 +78,6 @@
                 {% endif %}
 
                 <h4 class="mb-3">Upload Media</h4>
-                
-                <div class="mb-3">
-                    <label for="formImages" class="form-label">Images (Multiple selection possible)</label>
-                    <input class="form-control" type="file" id="formImages" name="images" multiple accept="image/*">
-                </div>
 
                 <div class="mb-3">
                     <label for="formVideos" class="form-label">Videos (Multiple selection possible)</label>

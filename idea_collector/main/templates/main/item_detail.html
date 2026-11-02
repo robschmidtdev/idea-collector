@@ -1,6 +1,11 @@
 {% extends "main/base.html" %}
+{% load static %}
 
 {% block title %}Item Detail - {{ settings.title }}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'django_ckeditor_5/dist/styles.css' %}">
+{% endblock %}
 
 {% block content %}
 
@@ -67,25 +72,12 @@
                 on {{ item.created_at|date:"Y-m-d H:i" }}
             </p>
             <hr>
-            <div class="item-description fs-5">
+            <div class="item-description ck-content fs-5">
                 {{ item.description|safe }}
             </div>
 
         </div>
     </div>
-
-    {% if item.images.all %}
-        <h3 class="mb-3">Images</h3>
-        <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
-            {% for img in item.images.all %}
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <img src="{{ img.image.url }}" class="card-img-top p-2" style="max-height: 250px; object-fit: contain;" alt="Item Image">
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
 
     {% if item.videos.all %}
         <h3 class="mb-3">Videos</h3>

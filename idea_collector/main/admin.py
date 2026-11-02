@@ -4,7 +4,6 @@ from django.utils.html import format_html
 from .models import (
     Item,
     ItemAudio,
-    ItemImage,
     ItemVideo,
     SiteSettings,
     Tag,
@@ -20,24 +19,6 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-class ItemImageInline(admin.TabularInline):
-    model = ItemImage
-    extra = 1
-
-    readonly_fields = ("image_preview",)
-    fields = ("image", "image_preview")
-
-    @admin.display(description="Preview")
-    def image_preview(self, obj):
-        if not obj.image:
-            return "-"
-
-        return format_html(
-            '<img src="{}" style="max-height:150px; max-width:250px;" />',
-            obj.image.url,
-        )
 
 
 class ItemVideoInline(admin.TabularInline):
@@ -97,7 +78,6 @@ class TagAdmin(admin.ModelAdmin):
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     inlines = [
-        ItemImageInline,
         ItemVideoInline,
         ItemAudioInline,
     ]

@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from ckeditor.fields import RichTextField
+from django_ckeditor_5.fields import CKEditor5Field
 from django.utils.html import strip_tags
 import html
 
@@ -63,8 +63,9 @@ class Item(models.Model):
     ]
 
     name = models.CharField(max_length=255)
-    description = RichTextField(
+    description = CKEditor5Field(
         blank=True,
+        config_name='default',
     )
     tags = models.ManyToManyField(Tag, blank=True, related_name="items")
 
@@ -162,24 +163,6 @@ class CustomFilter(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class ItemImage(models.Model):
-    item = models.ForeignKey(
-        Item,
-        on_delete=models.CASCADE,
-        related_name="images",
-    )
-    image = models.ImageField(upload_to="items/images/")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["created_at"]
-        verbose_name = "Item Image"
-        verbose_name_plural = "Item Images"
-
-    def __str__(self):
-        return f"Image - {self.item.name}"
 
 
 class ItemVideo(models.Model):

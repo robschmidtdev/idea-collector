@@ -68,10 +68,6 @@
                     </button>
                     <div class="dropdown-menu p-2">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" data-filter="media" value="images" id="filter-media-images">
-                            <label class="form-check-label" for="filter-media-images">Has Images</label>
-                        </div>
-                        <div class="form-check">
                             <input class="form-check-input" type="checkbox" data-filter="media" value="videos" id="filter-media-videos">
                             <label class="form-check-label" for="filter-media-videos">Has Videos</label>
                         </div>
@@ -111,7 +107,7 @@
                         <label class="form-check-label" for="add-filter-media"><i class="bi bi-paperclip"></i> Media</label>
                     </div>
                     <div class="dropdown-divider"></div>
-                    <h6 class="dropdown-header">Custom filters</h6>
+                    <h6 class="dropdown-header">Custom Filters</h6>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" data-filter="pinned-only" value="1" id="filter-pinned-only">
                         <label class="form-check-label" for="filter-pinned-only"><i class="bi bi-pin-fill"></i> Pinned Only</label>
@@ -317,7 +313,6 @@
             const matchesSearch = searchTerm === '' || item.dataset.search.toLowerCase().includes(searchTerm);
             const matchesColor = selectedColors.size === 0 || selectedColors.has(item.dataset.color);
             const itemMedia = [];
-            if (item.dataset.hasImages === 'true') itemMedia.push('images');
             if (item.dataset.hasVideos === 'true') itemMedia.push('videos');
             if (item.dataset.hasAudios === 'true') itemMedia.push('audios');
             if (item.dataset.hasReferences === 'true') itemMedia.push('references');
