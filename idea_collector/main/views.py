@@ -1,5 +1,10 @@
+import ipaddress
 import json
+import os
+import string
 
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.contrib.auth import login, logout as auth_logout
@@ -7,9 +12,12 @@ from django.contrib.auth.models import User
 from django.forms import modelform_factory
 from django.http import JsonResponse
 from django.db import models
+from idea_collector import storage_config
 from .forms import (
     CustomFilterForm,
+    DatabasePathForm,
     ItemForm,
+    MediaRootForm,
     StyledUserCreationForm,
     TagForm,
 )
@@ -25,10 +33,129 @@ from .models import (
 
 EXTRA_FILTER_KEYS = ("color", "media")
 SORT_ORDER_VALUES = {value for value, _ in UserFilterPreference.SORT_CHOICES}
+SQLITE_EXTENSIONS = (".sqlite3", ".sqlite", ".db")
+MAX_BROWSE_ENTRIES = 500
 
 SiteSettingsForm = modelform_factory(
     SiteSettings, fields=['title', 'primary_color']
 )
+
+def save_media_root_from_post(request):
+    media_root_form = MediaRootForm({'media_root': request.POST.get('media_root')})
+    if not media_root_form.is_valid():
+        return
+    new_media_root = media_root_form.cleaned_data['media_root']
+    previous_media_root = str(settings.MEDIA_ROOT)
+    if new_media_root != previous_media_root:
+        storage_config.apply_media_root(new_media_root)
+        messages.success(request, f'Media root changed to {new_media_root}')
+        messages.info(
+            request,
+            f'Media files from the previous location ({previous_media_root}) are no longer served.',
+        )
+        if os.path.isdir(new_media_root):
+            messages.info(request, f'The media directory {new_media_root} exists.')
+        else:
+            messages.warning(
+                request,
+                f'The media directory {new_media_root} does not exist yet. It will be created automatically when the first file is uploaded.',
+            )
+
+def save_database_path_from_post(request):
+    database_path_form = DatabasePathForm({'database_path': request.POST.get('database_path')})
+    if not database_path_form.is_valid():
+        return
+    new_database_path = database_path_form.cleaned_data['database_path']
+    current_database_path = str(settings.DATABASES['default']['NAME'])
+    if new_database_path != current_database_path:
+        storage_config.save_database_path(new_database_path)
+        messages.success(
+            request,
+            f'Database path changed to {new_database_path}. Restart the app to use the new database.',
+        )
+        messages.info(
+            request,
+            f'The current database file ({current_database_path}) is left unchanged.',
+        )
+        new_directory = os.path.dirname(new_database_path)
+        if new_directory and not os.path.isdir(new_directory):
+            messages.warning(
+                request,
+                f'The directory for {new_database_path} does not exist yet. Create it before restarting the app.',
+            )
+        elif not os.path.isfile(new_database_path):
+            messages.info(
+                request,
+                f'The database file {new_database_path} does not exist yet. Run "python manage.py migrate" after restarting the app.',
+            )
+
+
+
+def _is_local_request(request):
+    try:
+        return ipaddress.ip_address(request.META.get("REMOTE_ADDR", "")).is_loopback
+    except ValueError:
+        return False
+
+
+def _can_browse(request):
+    return request.user.is_authenticated or _is_local_request(request)
+
+
+def _list_drives():
+    if os.name == "nt":
+        return [f"{letter}:\\" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
+    return ["/"]
+
+
+def browse_directories(request):
+    if not _can_browse(request):
+        return JsonResponse(
+            {"error": "Browsing is only available for signed-in users."}, status=403
+        )
+
+    include_files = request.GET.get("files") == "1"
+    requested = request.GET.get("path", "").strip()
+
+    if requested:
+        current = os.path.abspath(requested)
+        if os.path.isfile(current):
+            current = os.path.dirname(current)
+    else:
+        current = os.path.expanduser("~")
+
+    if not os.path.isdir(current):
+        current = os.path.expanduser("~")
+
+    directories = []
+    files = []
+    try:
+        with os.scandir(current) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir():
+                        directories.append({"name": entry.name, "path": entry.path})
+                    elif include_files and entry.name.lower().endswith(SQLITE_EXTENSIONS):
+                        files.append({"name": entry.name, "path": entry.path})
+                except OSError:
+                    continue
+    except OSError:
+        return JsonResponse({"error": f"Cannot read directory {current}."}, status=400)
+
+    directories.sort(key=lambda item: item["name"].lower())
+    files.sort(key=lambda item: item["name"].lower())
+    parent = os.path.dirname(current)
+
+    return JsonResponse(
+        {
+            "path": current,
+            "parent": "" if parent == current else parent,
+            "drives": _list_drives(),
+            "directories": directories[:MAX_BROWSE_ENTRIES],
+            "files": files[:MAX_BROWSE_ENTRIES],
+        }
+    )
+
 
 def settings_view(request):
     settings_obj = SiteSettings.get_solo()
@@ -38,8 +165,12 @@ def settings_view(request):
     settings_form = SiteSettingsForm(instance=settings_obj)
     tag_form = TagForm()
     custom_filter_form = CustomFilterForm()
+    media_root_form = MediaRootForm(initial={"media_root": settings.MEDIA_ROOT})
+    database_path_form = DatabasePathForm(initial={"database_path": settings.DATABASES['default']['NAME']})
 
-    can_register = not User.objects.exists()
+    is_local_request = _is_local_request(request)
+    can_register = not User.objects.exists() and is_local_request
+    can_manage_storage = request.user.is_authenticated or is_local_request
     registration_form = None
 
     if not request.user.is_authenticated and can_register:
@@ -53,20 +184,35 @@ def settings_view(request):
                 messages.success(request, 'Settings saved successfully!')
                 return redirect('settings')
 
+        elif 'save_storage' in request.POST:
+            if not can_manage_storage:
+                messages.warning(
+                    request,
+                    'Storage settings can only be changed on the host machine or while signed in.',
+                )
+                return redirect('settings')
+            save_media_root_from_post(request)
+            save_database_path_from_post(request)
+            return redirect('settings')
+
         elif 'create_account' in request.POST and not request.user.is_authenticated:
-            if not User.objects.exists():
-                registration_form = StyledUserCreationForm(request.POST)
-                if registration_form.is_valid():
-                    user = registration_form.save()
-                    login(
-                        request,
-                        user,
-                        backend="django.contrib.auth.backends.ModelBackend",
-                    )
-                    messages.success(
-                        request, 'Account created. You are now signed in.'
-                    )
-                    return redirect('settings')
+            if not can_register:
+                messages.warning(
+                    request, 'Accounts can only be created on the host machine.'
+                )
+                return redirect('settings')
+            registration_form = StyledUserCreationForm(request.POST)
+            if registration_form.is_valid():
+                user = registration_form.save()
+                login(
+                    request,
+                    user,
+                    backend="django.contrib.auth.backends.ModelBackend",
+                )
+                messages.success(
+                    request, 'Account created. You are now signed in.'
+                )
+                return redirect('settings')
 
         elif 'delete_account' in request.POST and request.user.is_authenticated:
             user = request.user
@@ -135,10 +281,15 @@ def settings_view(request):
         'form': settings_form,    
         'tag_form': tag_form,      
         'custom_filter_form': custom_filter_form,
+        'media_root_form': media_root_form,
+        'media_root': settings.MEDIA_ROOT,
+        'database_path_form': database_path_form,
+        'database_path': settings.DATABASES['default']['NAME'],
         'custom_filters': custom_filters,
         'tags': tags,               
         'registration_form': registration_form,
         'can_register': can_register,
+        'can_manage_storage': can_manage_storage,
     }
     return render(request, 'main/settings.html', context)
 

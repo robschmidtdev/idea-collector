@@ -9,7 +9,7 @@
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
@@ -220,13 +220,61 @@
                             <button type="submit" name="create_account" class="btn btn-primary">Create Account</button>
                         </form>
                     {% else %}
-                        <p class="text-muted small mb-3">
-                            Sign in to manage your account and personal filters.
+                        <p class="text-muted small mb-0">
+                            Accounts can only be created on the host machine.
                         </p>
-                        <a href="{% url 'login' %}" class="btn btn-primary">Sign in</a>
                     {% endif %}
                 </div>
             </div>
+
+            {% if can_manage_storage %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Storage</h4>
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ media_root_form.media_root.id_for_label }}" class="form-label">Media Root</label>
+                            <div class="input-group">
+                                {{ media_root_form.media_root }}
+                                <button type="button" class="btn btn-outline-secondary" onclick="openPathBrowser('id_media_root', 'folder')">Browse</button>
+                            </div>
+                            {% if media_root_form.media_root.errors %}
+                                <div class="text-danger small">{{ media_root_form.media_root.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Absolute path where uploaded media files are stored. The value is saved to storage.json.
+                            </div>
+                            <div class="form-text">Current media root: <strong>{{ media_root }}</strong></div>
+                            <div class="alert alert-info py-2 mt-3">
+                                After changing the media root, a restart of the app is recommended.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ database_path_form.database_path.id_for_label }}" class="form-label">Database Path</label>
+                            <div class="input-group">
+                                {{ database_path_form.database_path }}
+                                <button type="button" class="btn btn-outline-secondary" onclick="openPathBrowser('id_database_path', 'database')">Browse</button>
+                            </div>
+                            {% if database_path_form.database_path.errors %}
+                                <div class="text-danger small">{{ database_path_form.database_path.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Absolute path to the SQLite database file. The value is saved to storage.json.
+                            </div>
+                            <div class="form-text">Current database path: <strong>{{ database_path }}</strong></div>
+                            <div class="alert alert-info py-2 mt-3">
+                                Changing the database path requires a restart of the app. The new database is used only after the restart.
+                            </div>
+                        </div>
+
+                        <button type="submit" name="save_storage" class="btn btn-primary mt-2">Save Storage</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
 
             <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
@@ -333,6 +381,30 @@
                 </div>
             </div>
 
+            <div class="modal fade" id="pathBrowserModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Select Path</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="d-flex gap-2 mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="pathBrowserUp">Up</button>
+                                <input type="text" class="form-control form-control-sm" id="pathBrowserPath" readonly>
+                            </div>
+                            <div id="pathBrowserDrives" class="d-flex flex-wrap gap-1 mb-2"></div>
+                            <div class="list-group" id="pathBrowserList"></div>
+                            <div class="text-danger small mt-2 d-none" id="pathBrowserError"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="pathBrowserSelect">Use this folder</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 function openCreateTagModal() {
                     document.getElementById('tagModalTitle').innerText = 'Add New Tag';
@@ -369,6 +441,108 @@
                     document.getElementById('id_name').value = name;
                     setCustomFilterItems(itemIds.split(',').filter(Boolean));
                 }
+
+                let pathBrowserTarget = null;
+                let pathBrowserMode = 'folder';
+                let pathBrowserCurrent = '';
+                let pathBrowserParent = '';
+
+                function openPathBrowser(targetId, mode) {
+                    pathBrowserTarget = document.getElementById(targetId);
+                    pathBrowserMode = mode;
+                    document.getElementById('pathBrowserError').classList.add('d-none');
+                    document.getElementById('pathBrowserList').innerHTML = '';
+                    document.getElementById('pathBrowserDrives').innerHTML = '';
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('pathBrowserModal')).show();
+                    loadPathBrowser(pathBrowserTarget ? pathBrowserTarget.value : '');
+                }
+
+                function loadPathBrowser(path) {
+                    const params = new URLSearchParams({ path: path || '' });
+                    if (pathBrowserMode === 'database') {
+                        params.set('files', '1');
+                    }
+                    fetch('{% url "browse_directories" %}?' + params.toString())
+                        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                        .then(({ ok, data }) => {
+                            if (!ok) {
+                                showPathBrowserError(data.error || 'Cannot open this path.');
+                                return;
+                            }
+                            pathBrowserCurrent = data.path;
+                            pathBrowserParent = data.parent || '';
+                            document.getElementById('pathBrowserPath').value = data.path;
+                            document.getElementById('pathBrowserUp').disabled = !pathBrowserParent;
+                            renderPathBrowserEntries(data);
+                        })
+                        .catch(() => showPathBrowserError('Cannot open this path.'));
+                }
+
+                function showPathBrowserError(message) {
+                    const error = document.getElementById('pathBrowserError');
+                    error.textContent = message;
+                    error.classList.remove('d-none');
+                }
+
+                function renderPathBrowserEntries(data) {
+                    const list = document.getElementById('pathBrowserList');
+                    const drives = document.getElementById('pathBrowserDrives');
+                    list.innerHTML = '';
+                    drives.innerHTML = '';
+                    (data.drives || []).forEach(drive => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'btn btn-sm btn-outline-secondary';
+                        button.textContent = drive;
+                        button.addEventListener('click', () => loadPathBrowser(drive));
+                        drives.appendChild(button);
+                    });
+                    (data.directories || []).forEach(entry => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'list-group-item list-group-item-action';
+                        button.textContent = entry.name;
+                        button.addEventListener('click', () => loadPathBrowser(entry.path));
+                        list.appendChild(button);
+                    });
+                    (data.files || []).forEach(entry => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'list-group-item list-group-item-action text-primary';
+                        button.textContent = entry.name;
+                        button.addEventListener('click', () => {
+                            if (pathBrowserTarget) {
+                                pathBrowserTarget.value = entry.path;
+                            }
+                            closePathBrowser();
+                        });
+                        list.appendChild(button);
+                    });
+                    if (!list.children.length) {
+                        const empty = document.createElement('div');
+                        empty.className = 'text-muted small';
+                        empty.textContent = 'No subfolders.';
+                        list.appendChild(empty);
+                    }
+                }
+
+                function closePathBrowser() {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('pathBrowserModal')).hide();
+                }
+
+                document.getElementById('pathBrowserUp').addEventListener('click', () => {
+                    if (pathBrowserParent) {
+                        loadPathBrowser(pathBrowserParent);
+                    }
+                });
+
+                document.getElementById('pathBrowserSelect').addEventListener('click', () => {
+                    if (pathBrowserTarget) {
+                        pathBrowserTarget.value = pathBrowserCurrent;
+                    }
+                    closePathBrowser();
+                });
+
             </script>
 
 

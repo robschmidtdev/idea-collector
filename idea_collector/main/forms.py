@@ -3,6 +3,22 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import CustomFilter, Item, Tag
 
 
+class DatabasePathForm(forms.Form):
+    database_path = forms.CharField(
+        label="Database Path",
+        help_text="Absolute path to the SQLite database file.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
+
+class MediaRootForm(forms.Form):
+    media_root = forms.CharField(
+        label="Media Root",
+        help_text="Absolute path where uploaded media files are stored.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
+
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item

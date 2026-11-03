@@ -18,5 +18,6 @@ urlpatterns = [
     path('items/<int:pk>/pin/', views.item_toggle_pin, name='item_toggle_pin'),
     path('items/pin/reorder/', views.item_reorder, name='item_reorder'),
     path('filters/preferences/', views.filter_preferences, name='filter_preferences'),
+    path('settings/browse/', views.browse_directories, name='browse_directories'),
     path('settings/', views.settings_view, name='settings'),
 ]

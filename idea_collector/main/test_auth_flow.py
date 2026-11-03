@@ -1,5 +1,14 @@
+import tempfile
+
 from django.contrib.auth.models import User
-from django.test import Client, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+
+PNG_BYTES = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+    b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 class AuthFlowTests(TestCase):
@@ -47,6 +56,40 @@ class AuthFlowTests(TestCase):
 
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(self.client.get("/").status_code, 200)
+
+
+class CKEditorUploadTests(TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp_dir.cleanup)
+        self.override = override_settings(MEDIA_ROOT=self.tmp_dir.name)
+        self.override.enable()
+        self.addCleanup(self.override.disable)
+
+    def upload(self, client):
+        image = SimpleUploadedFile("image.png", PNG_BYTES, content_type="image/png")
+        return client.post("/ckeditor5/image_upload/", {"upload": image})
+
+    def test_anonymous_upload_works_without_account(self):
+        response = self.upload(self.client)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("url", response.json())
+
+    def test_anonymous_upload_requires_login_when_account_exists(self):
+        User.objects.create_user("alice", password="old-password-123")
+        response = self.upload(self.client)
+        self.assertRedirects(
+            response,
+            "/login/?next=/ckeditor5/image_upload/",
+            fetch_redirect_response=False,
+        )
+
+    def test_logged_in_upload_works_when_account_exists(self):
+        user = User.objects.create_user("alice", password="old-password-123")
+        self.client.force_login(user)
+        response = self.upload(self.client)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("url", response.json())
 
 
 class RegistrationTests(TestCase):

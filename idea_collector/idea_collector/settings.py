@@ -11,30 +11,58 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import socket
 from pathlib import Path
 
-from dotenv import load_dotenv
+from . import storage_config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load local configuration from .env in the repo root (see .env.example)
-load_dotenv(BASE_DIR.parent / '.env')
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or storage_config.get_or_create_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+
+def _default_allowed_hosts():
+    hosts = {"127.0.0.1", "localhost", "::1"}
+    hostname = socket.gethostname()
+    if hostname:
+        hosts.update(
+            {
+                hostname,
+                hostname.lower(),
+                f"{hostname}.local",
+                f"{hostname.lower()}.local",
+            }
+        )
+        try:
+            hosts.update(socket.gethostbyname_ex(hostname)[2])
+        except OSError:
+            pass
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            hosts.add(sock.getsockname()[0])
+    except OSError:
+        pass
+    return sorted(host for host in hosts if host)
+
+
+allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
+ALLOWED_HOSTS = (
+    [host.strip() for host in allowed_hosts.split(',') if host.strip()]
+    if allowed_hosts
+    else _default_allowed_hosts()
+)
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.getenv('DJANGO_MEDIA_ROOT', str(BASE_DIR / 'media'))
+MEDIA_ROOT = storage_config.get_media_root()
 
 
 # Application definition
@@ -83,7 +111,7 @@ TEMPLATES = [
 ]
 
 CKEDITOR_5_FILE_STORAGE = "main.storage.CKEditor5Storage"
-CKEDITOR_5_FILE_UPLOAD_PERMISSION = "authenticated"
+CKEDITOR_5_FILE_UPLOAD_PERMISSION = "any"
 CKEDITOR_5_IMAGE_CLEANUP = True
 
 CKEDITOR_5_CONFIGS = {
@@ -134,7 +162,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.getenv('DJANGO_DB_PATH', str(BASE_DIR / 'db.sqlite3')),
+        'NAME': storage_config.get_database_path(),
     }
 }
 

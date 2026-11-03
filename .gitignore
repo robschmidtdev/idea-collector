@@ -10,6 +10,10 @@ venv/
 env/
 ENV/
 
+# Local app configuration (managed via settings UI / generated on first start)
+storage.json
+.secret_key
+
 # Environment variables
 .env
 .env.*
