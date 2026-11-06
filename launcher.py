@@ -410,6 +410,9 @@ def bootstrap(port, generate_data=False):
                 error=True,
             )
             return 1
+    install_result = install()
+    if install_result != 0:
+        return install_result
     return start_foreground(port, True)
 
 
