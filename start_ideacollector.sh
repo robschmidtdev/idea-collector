@@ -15,4 +15,4 @@ if [ -z "$PYTHON" ]; then
     exit 1
 fi
 
-exec "$PYTHON" launcher.py
+exec "$PYTHON" launcher.py start

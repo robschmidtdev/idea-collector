@@ -549,7 +549,7 @@ def install_windows():
     python = venv_python()
     icon = ICON_ICO
     launcher = ROOT / "launcher.py"
-    arguments = chr(34) + str(launcher) + chr(34)
+    arguments = chr(34) + str(launcher) + chr(34) + " start"
     script = "\n".join(
         [
             "$ErrorActionPreference = 'Stop'",
@@ -873,7 +873,7 @@ def main():
     DIALOGS = True
 
     if arguments.action == "start":
-        return start(DEFAULT_PORT, True)
+        return start_foreground(DEFAULT_PORT, True)
     if arguments.action == "bootstrap":
         return bootstrap(DEFAULT_PORT, True)
     if arguments.action == "stop":
