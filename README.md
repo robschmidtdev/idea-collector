@@ -46,15 +46,15 @@ python launcher.py install
 - Legt die App an, die ein Terminal-Fenster öffnet, in dem der Server startet.
 - Terminal-Fenster schließen beendet den Server.
 
-## Ein-Klick-Setup (bootstrap)
+## Start
 
 ```bash
-python launcher.py bootstrap --generate-data
+python launcher.py
 ```
 
 Der Launcher legt bei Bedarf eine virtuelle Umgebung an, installiert die Abhängigkeiten, führt die Migrationen aus und erzeugt Testdaten (1 Item). Danach startet er den Server.
 
-Mit `--no-data` wird das Generieren von Testdaten übersprungen.
+Mit `python launcher.py <aktion>` sind optional weitere Aktionen wie `stop` oder `status` möglich; das Standard-Verhalten ist das komplette Setup.
 
 ## Ohne Launcher starten
 
@@ -90,12 +90,7 @@ python manage.py generate_test_data --flush
 ## Launcher-Befehle
 
 ```bash
-python launcher.py start
-python launcher.py stop
-python launcher.py restart
-python launcher.py status
-python launcher.py install
-python launcher.py bootstrap --generate-data
+python launcher.py
 ```
 
-Weitere Optionen: `--port <Port>` sowie Umgebungsvariablen `IDEA_COLLECTOR_PORT`, `IDEA_COLLECTOR_PIDFILE`, `IDEA_COLLECTOR_LOGFILE`.
+Weitere Aktionen (z. B. `stop`) sind optional möglich.

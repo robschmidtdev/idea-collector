@@ -410,7 +410,7 @@ def bootstrap(port, generate_data=False):
                 error=True,
             )
             return 1
-    return start(port, True)
+    return start_foreground(port, True)
 
 
 def stop_by_port(port):
@@ -546,7 +546,7 @@ def install_windows():
     python = venv_python()
     icon = ICON_ICO
     launcher = ROOT / "launcher.py"
-    arguments = chr(34) + str(launcher) + chr(34) + " start --foreground"
+    arguments = chr(34) + str(launcher) + chr(34)
     script = "\n".join(
         [
             "$ErrorActionPreference = 'Stop'",
@@ -860,53 +860,27 @@ def main():
     parser = argparse.ArgumentParser(description="Idea Collector launcher")
     parser.add_argument(
         "action",
+        nargs="?",
         choices=("start", "stop", "restart", "status", "install", "bootstrap"),
-        help="Action to perform",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=DEFAULT_PORT,
-        help=f"Port for the local server (default: {DEFAULT_PORT})",
-    )
-    parser.add_argument(
-        "--no-browser",
-        action="store_true",
-        help="Do not open the browser",
-    )
-    parser.add_argument(
-        "--no-dialog",
-        action="store_true",
-        help="Print messages instead of showing dialogs",
-    )
-    parser.add_argument(
-        "--foreground",
-        action="store_true",
-        help="Run the server in this window (closing it stops the server)",
-    )
-    parser.add_argument(
-        "--no-data",
-        action="store_true",
-        help="Do not generate test data during bootstrap",
+        default="bootstrap",
+        help="Action to perform (default: bootstrap)",
     )
     arguments = parser.parse_args()
 
-    DIALOGS = not arguments.no_dialog
+    DIALOGS = True
 
     if arguments.action == "start":
-        if arguments.foreground:
-            return start_foreground(arguments.port, not arguments.no_browser)
-        return start(arguments.port, not arguments.no_browser)
+        return start(DEFAULT_PORT, True)
     if arguments.action == "bootstrap":
-        return bootstrap(arguments.port, not arguments.no_data)
+        return bootstrap(DEFAULT_PORT, True)
     if arguments.action == "stop":
-        return stop(arguments.port)
+        return stop(DEFAULT_PORT)
     if arguments.action == "restart":
-        stop(arguments.port, show_feedback=False)
+        stop(DEFAULT_PORT, show_feedback=False)
         time.sleep(0.5)
-        return start(arguments.port, not arguments.no_browser)
+        return start(DEFAULT_PORT, True)
     if arguments.action == "status":
-        return status(arguments.port)
+        return status(DEFAULT_PORT)
     return install()
 
 
