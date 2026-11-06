@@ -5,8 +5,17 @@
 {% block extra_head %}
     {{ form.media }}
     <style>
+        .ck-editor-container,
+        .ck.ck-editor {
+            width: 100%;
+        }
+        .ck.ck-content.ck-editor__editable,
         .ck-editor__editable_inline {
-            min-height: 300px;
+            min-height: 450px;
+        }
+        textarea.django_ckeditor_5 {
+            width: 100%;
+            min-height: 450px;
         }
     </style>
 {% endblock %}

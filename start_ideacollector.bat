@@ -1,13 +1,14 @@
 @echo off
-echo Starting Django app...
+title Idea Collector
+setlocal
+cd /d "%~dp0"
 
-cd /d "C:\MAMP\htdocs\idea-collector"
+if not exist "venv\Scripts\python.exe" (
+    echo The Python virtual environment was not found:
+    echo   %~dp0venv\Scripts\python.exe
+    echo Please set up the virtual environment first.
+    pause
+    exit /b 1
+)
 
-call venv\Scripts\activate
-
-cd /d "C:\MAMP\htdocs\idea-collector\idea_collector"
-
-start http://127.0.0.1:8000
-
-python manage.py runserver --insecure 0.0.0.0:8000
-
+"venv\Scripts\python.exe" "%~dp0launcher.py" start --foreground %*
