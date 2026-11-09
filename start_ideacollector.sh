@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/idea_collector"
 
-if [ -x "venv/bin/python" ]; then
-    PYTHON="venv/bin/python"
-elif [ -x ".venv/bin/python" ]; then
-    PYTHON=".venv/bin/python"
+if [ -x "../../venv/bin/python" ]; then
+    exec "../../venv/bin/python" manage.py runserver --insecure 0.0.0.0:8000
+elif [ -x "../../.venv/bin/python" ]; then
+    exec "../../.venv/bin/python" manage.py runserver --insecure 0.0.0.0:8000
 else
-    PYTHON="$(command -v python3 || command -v python || true)"
+    exec python3 manage.py runserver --insecure 0.0.0.0:8000
 fi
-
-if [ -z "$PYTHON" ]; then
-    echo "Python was not found. Please set up the virtual environment first." >&2
-    exit 1
-fi
-
-exec "$PYTHON" launcher.py start

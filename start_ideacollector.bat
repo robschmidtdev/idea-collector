@@ -1,6 +1,12 @@
 @echo off
-title Idea Collector
-setlocal
-cd /d "%~dp0"
+echo Starting Django app...
 
-py -3 "%~dp0launcher.py" start
+cd /d "C:\MAMP\htdocs\idea-collector"
+
+call venv\Scripts\activate
+
+cd /d "C:\MAMP\htdocs\idea-collector\idea_collector"
+
+start http://127.0.0.1:8000
+
+python manage.py runserver --insecure 0.0.0.0:8000
