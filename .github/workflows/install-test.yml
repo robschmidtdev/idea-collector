@@ -41,17 +41,6 @@ jobs:
           nohup ./start_ideacollector.sh > installer.log 2>&1 &
           echo $! > installer.pid
 
-      - name: Start installer (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $process = Start-Process -FilePath "cmd.exe" `
-            -ArgumentList "/c", "start_ideacollector.bat" `
-            -RedirectStandardOutput "installer.log" `
-            -RedirectStandardError "installer.err" `
-            -NoNewWindow -PassThru
-          $process.Id | Out-File -FilePath installer.pid -Encoding ascii
-
       - name: Wait for server (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
@@ -68,33 +57,10 @@ jobs:
           cat installer.log || true
           exit 1
 
-      - name: Wait for server (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          for ($attempt = 1; $attempt -le 120; $attempt++) {
-            & curl.exe -fsS --noproxy "*" "http://127.0.0.1:8000/" *> $null
-            if ($LASTEXITCODE -eq 0) {
-              Write-Output "Server is up after $attempt seconds"
-              exit 0
-            }
-            Start-Sleep -Seconds 1
-          }
-          Write-Output "Server did not start within 120 seconds"
-          Write-Output "----- installer.log -----"
-          if (Test-Path installer.log) { Get-Content installer.log }
-          if (Test-Path installer.err) { Get-Content installer.err }
-          exit 1
-
       - name: Run Django tests (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: venv/bin/python idea_collector/manage.py test
-
-      - name: Run Django tests (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: venv\Scripts\python.exe idea_collector\manage.py test
 
       - name: Stop server (Linux/macOS)
         if: always() && runner.os != 'Windows'
@@ -104,11 +70,51 @@ jobs:
             kill "$(cat installer.pid)" 2>/dev/null || true
           fi
 
-      - name: Stop server (Windows)
-        if: always() && runner.os == 'Windows'
+      - name: Install, start and test (Windows)
+        if: runner.os == 'Windows'
         shell: powershell
         run: |
-          if (Test-Path installer.pid) {
-            $serverPid = [int](Get-Content installer.pid)
-            taskkill /PID $serverPid /T /F 2>$null
+          $ErrorActionPreference = 'Continue'
+          $exitCode = 0
+
+          $installer = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList "/c", "start_ideacollector.bat" `
+            -RedirectStandardOutput "installer.log" `
+            -RedirectStandardError "installer.err" `
+            -NoNewWindow -PassThru
+
+          try {
+            $isUp = $false
+            for ($attempt = 1; $attempt -le 120; $attempt++) {
+              $client = New-Object System.Net.Sockets.TcpClient
+              try {
+                $async = $client.BeginConnect("127.0.0.1", 8000, $null, $null)
+                if ($async.AsyncWaitHandle.WaitOne(1000) -and $client.Connected) {
+                  $isUp = $true
+                  Write-Output "Server is up after $attempt seconds"
+                  break
+                }
+              } catch {
+              } finally {
+                $client.Close()
+              }
+              Start-Sleep -Seconds 1
+            }
+
+            if (-not $isUp) {
+              Write-Output "Server did not start within 120 seconds"
+              Write-Output "----- installer.log -----"
+              if (Test-Path installer.log) { Get-Content installer.log }
+              if (Test-Path installer.err) { Get-Content installer.err }
+              $exitCode = 1
+            } else {
+              & venv\Scripts\python.exe idea_collector\manage.py test
+              $exitCode = $LASTEXITCODE
+            }
+          } finally {
+            if (-not $installer.HasExited) {
+              taskkill.exe /PID $installer.Id /T /F 2>$null | Out-Null
+            }
           }
+
+          exit $exitCode
