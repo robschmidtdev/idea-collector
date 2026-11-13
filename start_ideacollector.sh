@@ -9,8 +9,9 @@ else
 fi
 
 HOST="127.0.0.1"
+LOAD_UP_HOST="127.0.0.1"
 PORT="8000"
-URL="http://$HOST:$PORT"
+URL="http://$LOAD_UP_HOST:$PORT"
 
 if [ ! -x "$VENV/bin/python" ]; then
     if ! command -v python3 >/dev/null 2>&1; then
@@ -24,6 +25,19 @@ if [ ! -x "$VENV/bin/python" ]; then
         echo "Could not create the virtual environment."
         echo "On Debian/Ubuntu install the venv package first:"
         echo "  sudo apt install python3-venv"
+        exit 1
+    fi
+fi
+
+if ! "$VENV/bin/python" -m pip --version >/dev/null 2>&1; then
+    echo "pip is missing in the virtual environment. Bootstrapping pip..."
+    if ! "$VENV/bin/python" -m ensurepip --upgrade; then
+        echo
+        echo "Could not bootstrap pip in the virtual environment."
+        echo "On Debian/Ubuntu install the venv and pip packages first:"
+        echo "  sudo apt install python3-venv python3-pip"
+        echo "Then remove the broken environment and start again:"
+        echo "  rm -rf \"$VENV\""
         exit 1
     fi
 fi

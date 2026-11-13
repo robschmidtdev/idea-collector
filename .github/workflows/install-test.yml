@@ -1,0 +1,114 @@
+name: Installation test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Install and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Start installer (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x start_ideacollector.sh
+          nohup ./start_ideacollector.sh > installer.log 2>&1 &
+          echo $! > installer.pid
+
+      - name: Start installer (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $process = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList "/c", "start_ideacollector.bat" `
+            -RedirectStandardOutput "installer.log" `
+            -RedirectStandardError "installer.err" `
+            -NoNewWindow -PassThru
+          $process.Id | Out-File -FilePath installer.pid -Encoding ascii
+
+      - name: Wait for server (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          for attempt in $(seq 1 120); do
+            if curl -fsS --noproxy '*' http://127.0.0.1:8000/ >/dev/null 2>&1; then
+              echo "Server is up after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not start within 120 seconds"
+          echo "----- installer.log -----"
+          cat installer.log || true
+          exit 1
+
+      - name: Wait for server (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          for ($attempt = 1; $attempt -le 120; $attempt++) {
+            & curl.exe -fsS --noproxy "*" "http://127.0.0.1:8000/" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Output "Server is up after $attempt seconds"
+              exit 0
+            }
+            Start-Sleep -Seconds 1
+          }
+          Write-Output "Server did not start within 120 seconds"
+          Write-Output "----- installer.log -----"
+          if (Test-Path installer.log) { Get-Content installer.log }
+          if (Test-Path installer.err) { Get-Content installer.err }
+          exit 1
+
+      - name: Run Django tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: venv/bin/python idea_collector/manage.py test
+
+      - name: Run Django tests (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: venv\Scripts\python.exe idea_collector\manage.py test
+
+      - name: Stop server (Linux/macOS)
+        if: always() && runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ -f installer.pid ]; then
+            kill "$(cat installer.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop server (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if (Test-Path installer.pid) {
+            $serverPid = [int](Get-Content installer.pid)
+            taskkill /PID $serverPid /T /F 2>$null
+          }

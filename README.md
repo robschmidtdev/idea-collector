@@ -5,6 +5,7 @@ This app is intended for local use only!
 ## Requirements
 
 - Python 3.11 or newer (must be available in `PATH`)
+- On Debian/Ubuntu: `sudo apt install python3-venv python3-pip`
 
 ## Windows
 

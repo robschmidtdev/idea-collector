@@ -6,8 +6,9 @@ cd /d "%~dp0"
 set "ROOT=%~dp0"
 set "VENV_PY=%ROOT%venv\Scripts\python.exe"
 set "HOST=127.0.0.1"
+set "LOAD_UP_HOST=127.0.0.1"
 set "PORT=8000"
-set "URL=http://%HOST%:%PORT%"
+set "URL=http://%LOAD_UP_HOST%:%PORT%"
 
 where python >nul 2>nul
 if errorlevel 1 (
