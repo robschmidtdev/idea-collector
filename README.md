@@ -1,6 +1,12 @@
-# Idea Collector
+<p align="center">
+  <img src="idea_collector/main/static/main/favicon.svg" alt="Idea Collector icon" width="120" height="120">
+</p>
 
-This app is intended for local use only!
+<h1 align="center">Idea Collector</h1>
+
+<p align="center">
+  <strong>This app is intended for local use only!</strong>
+</p>
 
 ## Requirements
 
