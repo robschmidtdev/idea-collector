@@ -1,9 +1,6 @@
-# idea-collector
+# Idea Collector
 
-Local idea collector app (Django + CKEditor + Bootstrap 5, bundled locally).
-
-This app is intended for local use only: the server listens on `127.0.0.1:8000`
-and debug mode is always enabled.
+This app is intended for local use only!
 
 ## Requirements
 
@@ -34,7 +31,7 @@ On macOS, double-clicking a `.sh` file usually opens an editor instead of a term
 run it from Terminal with `./start_ideacollector.sh` or rename it to `.command` and
 double-click that file.
 
-## Manual start
+## Manual start (for Developers)
 
 ```bash
 python -m venv venv

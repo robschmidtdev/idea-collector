@@ -6,7 +6,7 @@ import html
 
 class SiteSettings(models.Model):
     title = models.CharField(
-        max_length=100, default='Drum xx Factory', verbose_name='Site title'
+        max_length=100, default='Idea Collector', verbose_name='Site title'
     )
     primary_color = models.CharField(
         max_length=7, default='#0d6efd', verbose_name='Primary color (hex)'

@@ -425,7 +425,6 @@ def item_create(request):
         form = ItemForm(request.POST)
         if form.is_valid():
             item = form.save()
-            form.save_m2m()
 
             _save_media(item, request)
 
