@@ -9,7 +9,7 @@ class SiteSettings(models.Model):
         max_length=100, default='Idea Collector', verbose_name='Site title'
     )
     primary_color = models.CharField(
-        max_length=7, default='#0d6efd', verbose_name='Primary color (hex)'
+        max_length=7, default='#ff8a00', verbose_name='Primary color (hex)'
     )
 
     def save(self, *args, **kwargs):
