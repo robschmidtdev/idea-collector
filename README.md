@@ -1,96 +1,67 @@
 # idea-collector
 
-Lokale Idee-Collector-App (Django + CKEditor + Bootstrap 5, lokal eingebunden).
+Local idea collector app (Django + CKEditor + Bootstrap 5, bundled locally).
 
-## Voraussetzungen
+This app is intended for local use only: the server listens on `127.0.0.1:8000`
+and debug mode is always enabled.
 
-- Python 3.11 oder neuer
-- Das Projekt liegt im Projektordner (z. B. `C:\MAMP\htdocs\idea-collector`)
+## Requirements
 
-## Schnellstart auf deinem Gerät
+- Python 3.11 or newer (must be available in `PATH`)
 
-### Windows
+## Windows
 
-1. Desktop-Shortcut anlegen (optional, erleichtert das Starten):
+Double-click `start_ideacollector.bat`. On first start it automatically:
 
-   ```bash
-   python launcher.py install
-   ```
+1. creates the `venv` virtual environment,
+2. installs the dependencies from `requirements.txt`,
+3. applies database migrations,
+4. starts the server at `http://127.0.0.1:8000` and opens the browser.
 
-2. App starten:
+To stop the server, close the console window or press `Ctrl+C`.
 
-   ```bat
-   start_ideacollector.bat
-   ```
-
-   oder per Doppelklick auf das Desktop-Shortcut **Idea Collector**.
-
-3. Der Server läuft im Konsolenfenster (Titel `Idea Collector`), das Browser-Fenster öffnet sich danach automatisch.
-
-4. **Stoppen:** Konsolenfenster schließen. Es gibt kein separates Beenden-Icon mehr.
-
-### Linux
+## Linux / macOS
 
 ```bash
 ./start_ideacollector.sh
 ```
 
-- Start per Desktop-Eintrag; das Terminal schließen beendet den Server.
+The script uses an existing `venv` or `.venv`, otherwise the system Python.
+To stop the server, close the terminal or press `Ctrl+C`.
 
-### macOS
+On Linux, make the script executable once with `chmod +x start_ideacollector.sh`.
+On macOS, double-clicking a `.sh` file usually opens an editor instead of a terminal;
+run it from Terminal with `./start_ideacollector.sh` or rename it to `.command` and
+double-click that file.
 
-```bash
-python launcher.py install
-```
-
-- Legt die App an, die ein Terminal-Fenster öffnet, in dem der Server startet.
-- Terminal-Fenster schließen beendet den Server.
-
-## Start
+## Manual start
 
 ```bash
-python launcher.py
-```
-
-Der Launcher legt bei Bedarf eine virtuelle Umgebung an, installiert die Abhängigkeiten, führt die Migrationen aus und erzeugt Testdaten (1 Item). Danach startet er den Server.
-
-Mit `python launcher.py <aktion>` sind optional weitere Aktionen wie `stop` oder `status` möglich; das Standard-Verhalten ist das komplette Setup.
-
-## Ohne Launcher starten
-
-Windows (PowerShell):
-
-```powershell
 python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver --insecure
+```
+
+Windows:
+
+```bat
+venv\Scripts\python -m pip install -r requirements.txt
+cd idea_collector
+..\venv\Scripts\python manage.py migrate
+..\venv\Scripts\python manage.py runserver 127.0.0.1:8000
 ```
 
 Linux / macOS:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver --insecure
+venv/bin/python -m pip install -r requirements.txt
+cd idea_collector
+../venv/bin/python manage.py migrate
+../venv/bin/python manage.py runserver 127.0.0.1:8000
 ```
 
-Hinweis: Der Launcher ergänzt `--insecure` und bezieht Bootstrap, Favicon und CKEditor aus den lokalen Statik-Dateien.
-
-## Testdaten
+## Test data
 
 ```bash
+cd idea_collector
 python manage.py generate_test_data --items 500 --tags 30
 python manage.py generate_test_data --flush
 ```
-
-## Launcher-Befehle
-
-```bash
-python launcher.py
-```
-
-Weitere Aktionen (z. B. `stop`) sind optional möglich.

@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
-import socket
 from pathlib import Path
 
 from . import storage_config
@@ -25,41 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or storage_config.get_or_create_secret_key()
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+# This app is meant to run locally only, so debug mode is always enabled.
+DEBUG = True
 
-
-def _default_allowed_hosts():
-    hosts = {"127.0.0.1", "localhost", "::1"}
-    hostname = socket.gethostname()
-    if hostname:
-        hosts.update(
-            {
-                hostname,
-                hostname.lower(),
-                f"{hostname}.local",
-                f"{hostname.lower()}.local",
-            }
-        )
-        try:
-            hosts.update(socket.gethostbyname_ex(hostname)[2])
-        except OSError:
-            pass
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.connect(("8.8.8.8", 80))
-            hosts.add(sock.getsockname()[0])
-    except OSError:
-        pass
-    return sorted(host for host in hosts if host)
-
-
-allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
-ALLOWED_HOSTS = (
-    [host.strip() for host in allowed_hosts.split(',') if host.strip()]
-    if allowed_hosts
-    else _default_allowed_hosts()
-)
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = storage_config.get_media_root()
