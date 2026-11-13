@@ -4,11 +4,7 @@
 
 <h1 align="center">Idea Collector</h1>
 
-<p align="center">
-  <strong>This app is intended for local use only!</strong>
-</p>
 
-## What you can do
 
 Idea Collector is a private workspace for your ideas. Capture thoughts as rich-text
 notes, organize them with colored tags, and connect related ideas so you can find
