@@ -23,7 +23,13 @@ To stop the server, close the console window or press `Ctrl+C`.
 ./start_ideacollector.sh
 ```
 
-The script uses an existing `venv` or `.venv`, otherwise the system Python.
+On first start it automatically:
+
+1. creates a `venv` virtual environment (or reuses an existing `venv`/`.venv`),
+2. installs the dependencies from `requirements.txt`,
+3. applies database migrations,
+4. starts the server at `http://127.0.0.1:8000`.
+
 To stop the server, close the terminal or press `Ctrl+C`.
 
 On Linux, make the script executable once with `chmod +x start_ideacollector.sh`.
