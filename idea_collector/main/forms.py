@@ -1,3 +1,5 @@
+import os
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomFilter, Item, Tag
@@ -5,10 +7,23 @@ from .models import CustomFilter, Item, Tag
 
 class DatabasePathForm(forms.Form):
     database_path = forms.CharField(
-        label="Database Path",
-        help_text="Absolute path to the SQLite database file.",
+        label="Database Folder",
+        help_text="Absolute path to a folder. The current database file will be copied into it.",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+
+    def clean_database_path(self):
+        from django.conf import settings
+
+        path = os.path.abspath(os.path.expanduser(self.cleaned_data["database_path"].strip()))
+        if not path:
+            raise forms.ValidationError("Database path cannot be empty.")
+        if os.path.isfile(path):
+            path = os.path.dirname(path)
+        if os.path.splitext(path)[1].lower() in {".sqlite3", ".sqlite", ".db"} and not os.path.isdir(path):
+            raise forms.ValidationError("Select a folder. The database file will be copied into it automatically.")
+        current_name = os.path.basename(str(settings.DATABASES["default"]["NAME"]))
+        return os.path.join(path, current_name)
 
 
 class MediaRootForm(forms.Form):
@@ -17,6 +32,16 @@ class MediaRootForm(forms.Form):
         help_text="Absolute path where uploaded media files are stored.",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+
+    def clean_media_root(self):
+        path = os.path.abspath(os.path.expanduser(self.cleaned_data["media_root"].strip()))
+        if not path:
+            raise forms.ValidationError("Media root cannot be empty.")
+        if not os.path.isabs(path):
+            raise forms.ValidationError("Media root must be absolute.")
+        if os.path.isfile(path):
+            raise forms.ValidationError("Media root must be a directory path, not a file.")
+        return path
 
 
 class ItemForm(forms.ModelForm):

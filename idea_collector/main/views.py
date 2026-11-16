@@ -1,10 +1,11 @@
 import ipaddress
 import json
 import os
+import shutil
+import sqlite3
 import string
 
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage, default_storage
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.contrib.auth import login, logout as auth_logout
@@ -41,54 +42,103 @@ SiteSettingsForm = modelform_factory(
     SiteSettings, fields=['title', 'primary_color']
 )
 
+def _copy_directory_contents(source, destination):
+    copied = 0
+    for root, _, files in os.walk(source):
+        rel_root = os.path.relpath(root, source)
+        target_root = destination if rel_root == "." else os.path.join(destination, rel_root)
+        os.makedirs(target_root, exist_ok=True)
+        for name in files:
+            src_file = os.path.join(root, name)
+            dst_file = os.path.join(target_root, name)
+            if not os.path.exists(dst_file):
+                shutil.copy2(src_file, dst_file)
+                copied += 1
+    return copied
+
+
 def save_media_root_from_post(request):
-    media_root_form = MediaRootForm({'media_root': request.POST.get('media_root')})
+    media_root_form = MediaRootForm(request.POST)
     if not media_root_form.is_valid():
-        return
-    new_media_root = media_root_form.cleaned_data['media_root']
-    previous_media_root = str(settings.MEDIA_ROOT)
-    if new_media_root != previous_media_root:
+        for error in media_root_form.errors.get("media_root", []):
+            messages.error(request, f"Media root: {error}")
+        return media_root_form
+    new_media_root = os.path.abspath(media_root_form.cleaned_data["media_root"])
+    previous_media_root = os.path.abspath(str(settings.MEDIA_ROOT))
+
+    if new_media_root == previous_media_root:
+        messages.info(request, "Media root is unchanged.")
+        return media_root_form
+
+    if os.path.isdir(previous_media_root) and os.path.commonpath([previous_media_root, new_media_root]) == previous_media_root:
+        messages.error(request, "The new media root must not be inside the current media root.")
+        return media_root_form
+
+    copied = 0
+    try:
+        os.makedirs(new_media_root, exist_ok=True)
+        if os.path.isdir(previous_media_root):
+            copied = _copy_directory_contents(previous_media_root, new_media_root)
         storage_config.apply_media_root(new_media_root)
-        messages.success(request, f'Media root changed to {new_media_root}')
-        messages.info(
-            request,
-            f'Media files from the previous location ({previous_media_root}) are no longer served.',
-        )
-        if os.path.isdir(new_media_root):
-            messages.info(request, f'The media directory {new_media_root} exists.')
-        else:
-            messages.warning(
-                request,
-                f'The media directory {new_media_root} does not exist yet. It will be created automatically when the first file is uploaded.',
-            )
+    except OSError as exc:
+        messages.error(request, f"Could not change media root: {exc}")
+        return media_root_form
+
+    messages.success(request, f"Media root changed to {new_media_root}.")
+    if os.path.isdir(previous_media_root):
+        messages.info(request, f"Copied {copied} existing media file(s) to the new folder.")
+    else:
+        messages.info(request, "No existing media folder was found to copy.")
+    messages.info(request, "A restart of the app is recommended so all components use the new media path.")
+    return media_root_form
+
+
+def _copy_sqlite_database(source, destination):
+    os.makedirs(os.path.dirname(destination) or ".", exist_ok=True)
+    if not os.path.exists(source):
+        return False
+    src_conn = sqlite3.connect(source)
+    try:
+        dst_conn = sqlite3.connect(destination)
+        try:
+            src_conn.backup(dst_conn)
+        finally:
+            dst_conn.close()
+    finally:
+        src_conn.close()
+    for suffix in ("-wal", "-shm"):
+        sidecar = source + suffix
+        if os.path.exists(sidecar):
+            shutil.copy2(sidecar, destination + suffix)
+    return True
+
 
 def save_database_path_from_post(request):
-    database_path_form = DatabasePathForm({'database_path': request.POST.get('database_path')})
+    database_path_form = DatabasePathForm(request.POST)
     if not database_path_form.is_valid():
-        return
-    new_database_path = database_path_form.cleaned_data['database_path']
-    current_database_path = str(settings.DATABASES['default']['NAME'])
-    if new_database_path != current_database_path:
+        for error in database_path_form.errors.get("database_path", []):
+            messages.error(request, f"Database path: {error}")
+        return database_path_form
+    new_database_path = os.path.abspath(database_path_form.cleaned_data["database_path"])
+    current_database_path = os.path.abspath(str(settings.DATABASES["default"]["NAME"]))
+
+    if new_database_path == current_database_path:
+        messages.info(request, "Database path is unchanged.")
+        return database_path_form
+
+    try:
+        copied = _copy_sqlite_database(current_database_path, new_database_path)
         storage_config.save_database_path(new_database_path)
-        messages.success(
-            request,
-            f'Database path changed to {new_database_path}. Restart the app to use the new database.',
-        )
-        messages.info(
-            request,
-            f'The current database file ({current_database_path}) is left unchanged.',
-        )
-        new_directory = os.path.dirname(new_database_path)
-        if new_directory and not os.path.isdir(new_directory):
-            messages.warning(
-                request,
-                f'The directory for {new_database_path} does not exist yet. Create it before restarting the app.',
-            )
-        elif not os.path.isfile(new_database_path):
-            messages.info(
-                request,
-                f'The database file {new_database_path} does not exist yet. Run "python manage.py migrate" after restarting the app.',
-            )
+    except (OSError, sqlite3.Error) as exc:
+        messages.error(request, f"Could not change database path: {exc}")
+        return database_path_form
+
+    messages.success(request, f"Database path saved as {new_database_path}. Restart the app to use it.")
+    if copied:
+        messages.info(request, "The current database was copied to the selected folder so your data stays available after restart.")
+    else:
+        messages.warning(request, "The current database file could not be found to copy. Run migrations after restart if needed.")
+    return database_path_form
 
 
 
@@ -167,7 +217,7 @@ def settings_view(request):
     tag_form = TagForm()
     custom_filter_form = CustomFilterForm()
     media_root_form = MediaRootForm(initial={"media_root": settings.MEDIA_ROOT})
-    database_path_form = DatabasePathForm(initial={"database_path": settings.DATABASES['default']['NAME']})
+    database_path_form = DatabasePathForm(initial={"database_path": os.path.dirname(str(settings.DATABASES['default']['NAME']))})
 
     is_local_request = _is_local_request(request)
     can_register = not User.objects.exists() and is_local_request
@@ -192,9 +242,10 @@ def settings_view(request):
                     'Storage settings can only be changed on the host machine or while signed in.',
                 )
                 return redirect('settings')
-            save_media_root_from_post(request)
-            save_database_path_from_post(request)
-            return redirect('settings')
+            media_root_form = save_media_root_from_post(request) or MediaRootForm(request.POST)
+            database_path_form = save_database_path_from_post(request) or DatabasePathForm(request.POST)
+            if not media_root_form.errors and not database_path_form.errors:
+                return redirect('settings')
 
         elif 'create_account' in request.POST and not request.user.is_authenticated:
             if not can_register:

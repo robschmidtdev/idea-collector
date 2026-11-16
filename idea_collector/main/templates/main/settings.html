@@ -253,20 +253,20 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="{{ database_path_form.database_path.id_for_label }}" class="form-label">Database Path</label>
+                            <label for="{{ database_path_form.database_path.id_for_label }}" class="form-label">Database Folder</label>
                             <div class="input-group">
                                 {{ database_path_form.database_path }}
-                                <button type="button" class="btn btn-outline-secondary" onclick="openPathBrowser('id_database_path', 'database')">Browse</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="openPathBrowser('id_database_path', 'folder')">Browse</button>
                             </div>
                             {% if database_path_form.database_path.errors %}
                                 <div class="text-danger small">{{ database_path_form.database_path.errors }}</div>
                             {% endif %}
                             <div class="form-text">
-                                Absolute path to the SQLite database file. The value is saved to storage.json.
+                                Select a folder. The current database file will be copied into it and the new path will be saved to storage.json.
                             </div>
                             <div class="form-text">Current database path: <strong>{{ database_path }}</strong></div>
                             <div class="alert alert-info py-2 mt-3">
-                                Changing the database path requires a restart of the app. The new database is used only after the restart.
+                                The current database is copied automatically. Changing the database path requires a restart of the app.
                             </div>
                         </div>
 

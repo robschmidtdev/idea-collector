@@ -61,9 +61,11 @@ def save_database_path(path, config_path=None) -> str:
 
 
 def apply_media_root(path) -> None:
+    path = os.path.abspath(os.path.expanduser(str(path)))
+    os.makedirs(path, exist_ok=True)
     save_media_root(path)
     settings.MEDIA_ROOT = path
-    default_storage._wrapped = FileSystemStorage()
+    default_storage._wrapped = FileSystemStorage(location=path, base_url=settings.MEDIA_URL)
 
 
 def get_secret_key_path() -> Path:

@@ -11,7 +11,7 @@ notes, organize them with colored tags, and connect related ideas so you can fin
 them again later.
 
 - **Capture ideas** with a title, formatted description, color, and tags.
-- **Attach media** such as videos and audio recordings to an idea.
+- **Attach files** such as videos, audio recordings, and other files to an idea.
 - **Link ideas** by referencing related items.
 - **Pin and reorder** important ideas at the top of the list.
 - **Find things fast** with tag, color, media, and pinned filters, custom filters,
