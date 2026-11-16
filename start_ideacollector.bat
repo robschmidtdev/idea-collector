@@ -28,7 +28,7 @@ echo Starting Idea Collector...
 echo To stop the app, close the app window or this window.
 echo.
 
-"%VENV_PY%" "%ROOT%run_desktop.py"
+"%VENV_PY%" "%ROOT%run_desktop.py" %*
 goto :end
 
 :error

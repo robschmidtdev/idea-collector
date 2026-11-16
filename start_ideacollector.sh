@@ -50,4 +50,4 @@ echo "Starting Idea Collector..."
 echo "To stop the app, close the app window or this terminal."
 echo
 
-exec "$PYTHON" "$ROOT/run_desktop.py"
+exec "$PYTHON" "$ROOT/run_desktop.py" "$@"

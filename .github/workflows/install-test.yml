@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x start_ideacollector.sh
-          nohup ./start_ideacollector.sh > installer.log 2>&1 &
+          nohup ./start_ideacollector.sh --no-window > installer.log 2>&1 &
           echo $! > installer.pid
 
       - name: Wait for server (Linux/macOS)
@@ -78,7 +78,7 @@ jobs:
           $exitCode = 0
 
           $installer = Start-Process -FilePath "cmd.exe" `
-            -ArgumentList "/c", "start_ideacollector.bat" `
+            -ArgumentList "/c", "start_ideacollector.bat --no-window" `
             -RedirectStandardOutput "installer.log" `
             -RedirectStandardError "installer.err" `
             -NoNewWindow -PassThru

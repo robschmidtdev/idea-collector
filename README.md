@@ -38,6 +38,9 @@ Double-click `start_ideacollector.bat`. On first start it automatically:
 
 To stop the app, close the app window or the console window.
 
+To start the server without opening the desktop window (for example in CI or on a
+headless server), run `start_ideacollector.bat --no-window`.
+
 ## Linux / macOS
 
 ```bash
@@ -52,6 +55,9 @@ On first start it automatically:
 4. starts the app in a desktop window.
 
 To stop the app, close the app window or the terminal.
+
+To start the server without opening the desktop window (for example in CI or on a
+headless server), run `./start_ideacollector.sh --no-window`.
 
 On Linux, make the script executable once with `chmod +x start_ideacollector.sh`.
 On macOS, double-clicking a `.sh` file usually opens an editor instead of a terminal;
