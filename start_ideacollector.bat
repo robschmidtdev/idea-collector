@@ -5,10 +5,6 @@ title Idea Collector
 cd /d "%~dp0"
 set "ROOT=%~dp0"
 set "VENV_PY=%ROOT%venv\Scripts\python.exe"
-set "HOST=127.0.0.1"
-set "LOAD_UP_HOST=127.0.0.1"
-set "PORT=8000"
-set "URL=http://%LOAD_UP_HOST%:%PORT%"
 
 where python >nul 2>nul
 if errorlevel 1 (
@@ -27,20 +23,12 @@ if not exist "%VENV_PY%" (
     if errorlevel 1 goto :error
 )
 
-cd /d "%ROOT%idea_collector"
-
-echo Applying database migrations...
-"%VENV_PY%" manage.py migrate
-if errorlevel 1 goto :error
-
 echo.
-echo Starting Idea Collector at %URL%
-echo The browser will open in a few seconds.
-echo To stop the server, close this window or press Ctrl+C.
+echo Starting Idea Collector...
+echo To stop the app, close the app window or this window.
 echo.
 
-start "" /min cmd /c "timeout /t 2 /nobreak >nul & start %URL%"
-"%VENV_PY%" manage.py runserver %HOST%:%PORT%
+"%VENV_PY%" "%ROOT%run_desktop.py"
 goto :end
 
 :error

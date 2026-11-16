@@ -34,9 +34,9 @@ Double-click `start_ideacollector.bat`. On first start it automatically:
 1. creates the `venv` virtual environment,
 2. installs the dependencies from `requirements.txt`,
 3. applies database migrations,
-4. starts the server at `http://127.0.0.1:8000` and opens the browser.
+4. starts the app in a desktop window.
 
-To stop the server, close the console window or press `Ctrl+C`.
+To stop the app, close the app window or the console window.
 
 ## Linux / macOS
 
@@ -49,9 +49,9 @@ On first start it automatically:
 1. creates a `venv` virtual environment (or reuses an existing `venv`/`.venv`),
 2. installs the dependencies from `requirements.txt`,
 3. applies database migrations,
-4. starts the server at `http://127.0.0.1:8000`.
+4. starts the app in a desktop window.
 
-To stop the server, close the terminal or press `Ctrl+C`.
+To stop the app, close the app window or the terminal.
 
 On Linux, make the script executable once with `chmod +x start_ideacollector.sh`.
 On macOS, double-clicking a `.sh` file usually opens an editor instead of a terminal;
@@ -60,14 +60,19 @@ double-click that file.
 
 ## Access from phone or tablet
 
-By default the app only listens on `127.0.0.1`, so it is reachable only on the
-computer that runs it. To use it from a phone or tablet in your own trusted
-network, make these changes:
+The server and window addresses are configured in `run_desktop.py`:
 
-1. **Let the server listen on your network interface.** In the start script for
-   your OS, change `HOST` from `127.0.0.1` to `0.0.0.0`:
-   - Windows: `start_ideacollector.bat`, the line `set "HOST=127.0.0.1"`
-   - Linux / macOS: `start_ideacollector.sh`, the line `HOST="127.0.0.1"`
+- `HOST` controls which interface the server binds to (`127.0.0.1` = local
+  only, `0.0.0.0` = all network interfaces).
+- `LOAD_HOST` is the address the desktop window connects to; keep it at
+  `127.0.0.1`.
+- `PORT` is the port (`8000`).
+
+To use it from a phone or tablet in your own trusted network, make these
+changes:
+
+1. **Let the server listen on your network interface.** In `run_desktop.py`, set
+   `HOST = "0.0.0.0"` and leave `LOAD_HOST = "127.0.0.1"` unchanged.
 2. **Allow the device's address.** Find the local IP address of the computer
    running Idea Collector (Windows: `ipconfig`; Linux: `hostname -I`;
    macOS: `ipconfig getifaddr en0`) and add it to `ALLOWED_HOSTS` in

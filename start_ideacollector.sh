@@ -8,11 +8,6 @@ else
     VENV="$ROOT/venv"
 fi
 
-HOST="127.0.0.1"
-LOAD_UP_HOST="127.0.0.1"
-PORT="8000"
-URL="http://$LOAD_UP_HOST:$PORT"
-
 if [ ! -x "$VENV/bin/python" ]; then
     if ! command -v python3 >/dev/null 2>&1; then
         echo "Python 3 was not found. Please install Python 3 and try again."
@@ -49,15 +44,10 @@ if ! "$VENV/bin/python" -c "import django" >/dev/null 2>&1; then
 fi
 
 PYTHON="$VENV/bin/python"
-cd "$ROOT/idea_collector"
-
-echo "Applying database migrations..."
-"$PYTHON" manage.py migrate
 
 echo
-echo "Starting Idea Collector at $URL"
-echo "Open this address in your browser."
-echo "To stop the server, close this terminal or press Ctrl+C."
+echo "Starting Idea Collector..."
+echo "To stop the app, close the app window or this terminal."
 echo
 
-exec "$PYTHON" manage.py runserver "$HOST:$PORT"
+exec "$PYTHON" "$ROOT/run_desktop.py"
