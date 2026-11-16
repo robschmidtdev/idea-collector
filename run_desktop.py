@@ -1,18 +1,44 @@
-﻿import os
+﻿import argparse
+import os
 import socket
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
+from pathlib import Path
 
 import django
 import webview
 from django.core.management import call_command
 
 
-HOST = "0.0.0.0"
-LOAD_HOST = "127.0.0.1"
-PORT = 8000
+HOST = os.getenv("IDEACOLLECTOR_HOST", "127.0.0.1")
+LOAD_HOST = "127.0.0.1" if HOST in ("0.0.0.0", "::") else HOST
+PORT = int(os.getenv("IDEACOLLECTOR_PORT", "8000"))
 URL = f"http://{LOAD_HOST}:{PORT}"
+
+if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
+    os.environ.setdefault("PYWEBVIEW_GUI", "qt")
+    os.environ.setdefault("QT_API", "pyqt6")
+
+
+def is_frozen():
+    return bool(getattr(sys, "frozen", False))
+
+
+def get_base_dir():
+    if is_frozen():
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    return Path(__file__).resolve().parent
+
+
+def get_icon_path(base_dir):
+    if is_frozen():
+        icon_path = base_dir / "main" / "static" / "main" / "favicon.ico"
+    else:
+        icon_path = base_dir / "idea_collector" / "main" / "static" / "main" / "favicon.ico"
+    return icon_path if icon_path.is_file() else None
 
 
 def wait_for_server(host, port, timeout=30):
@@ -28,33 +54,98 @@ def wait_for_server(host, port, timeout=30):
     return False
 
 
-def main():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.join(base_dir, "idea_collector")
-    os.chdir(app_dir)
-    if app_dir not in sys.path:
-        sys.path.insert(0, app_dir)
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "idea_collector.settings")
+def wait_for_http(url, timeout=60):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=2) as response:
+                if response.status == 200:
+                    return True
+        except (urllib.error.URLError, OSError):
+            pass
+        time.sleep(0.5)
+    return False
 
+
+def start_django(base_dir):
+    if is_frozen():
+        sys.path.insert(0, str(base_dir))
+    else:
+        app_dir = base_dir / "idea_collector"
+        os.chdir(app_dir)
+        sys.path.insert(0, str(app_dir))
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "idea_collector.settings")
     django.setup()
     call_command("migrate", interactive=False, verbosity=1)
 
+
+def start_server():
     server = threading.Thread(
         target=call_command,
         args=("runserver", f"{HOST}:{PORT}", "--noreload"),
         daemon=True,
     )
     server.start()
+    return server
+
+
+def run_self_test():
+    checks = [
+        f"{URL}/",
+        f"{URL}/static/main/vendor/bootstrap/bootstrap.min.css",
+        f"{URL}/static/django_ckeditor_5/dist/bundle.js",
+    ]
+    for url in checks:
+        if not wait_for_http(url):
+            print(f"Self-test failed: {url} is not reachable", file=sys.stderr)
+            return 1
+        print(f"OK: {url}")
+    print("Self-test passed")
+    return 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Idea Collector desktop application")
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="start the local server, check the bundled app and exit",
+    )
+    parser.add_argument(
+        "--no-window",
+        action="store_true",
+        help="run the local server without opening a desktop window",
+    )
+    args = parser.parse_args(argv)
+
+    base_dir = get_base_dir()
+    start_django(base_dir)
+    start_server()
+
+    if args.self_test:
+        return run_self_test()
 
     if not wait_for_server(LOAD_HOST, PORT):
         print(f"Could not start server at {URL}")
-        sys.exit(1)
+        return 1
 
-    icon_path = os.path.join(app_dir, "main", "static", "main", "favicon.ico")
-    webview.create_window("", URL, width=1200, height=800)
-    webview.start(icon=icon_path if os.path.isfile(icon_path) else None)
-    os._exit(0)
+    if args.no_window:
+        print(f"Server running at {URL}. Press Ctrl+C to stop.")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            return 0
+
+    icon_path = get_icon_path(base_dir)
+    webview.create_window("Idea Collector", URL, width=1200, height=800)
+    webview.start(icon=str(icon_path) if icon_path else None)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(exit_code)

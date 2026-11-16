@@ -60,34 +60,46 @@ double-click that file.
 
 ## Access from phone or tablet
 
-The server and window addresses are configured in `run_desktop.py`:
+By default the app only listens on `127.0.0.1` and only allows that host. The
+network settings can be changed at runtime with environment variables, so no
+rebuild is required - also not for the packaged application:
 
-- `HOST` controls which interface the server binds to (`127.0.0.1` = local
-  only, `0.0.0.0` = all network interfaces).
-- `LOAD_HOST` is the address the desktop window connects to; keep it at
-  `127.0.0.1`.
-- `PORT` is the port (`8000`).
+- `IDEACOLLECTOR_HOST` - interface to bind (`127.0.0.1` = local only,
+  `0.0.0.0` = all network interfaces).
+- `DJANGO_ALLOWED_HOSTS` - comma-separated list of allowed host names and IP
+  addresses.
+- `IDEACOLLECTOR_PORT` - port (`8000`).
 
-To use it from a phone or tablet in your own trusted network, make these
-changes:
+Windows (run these commands in the terminal before starting the app):
 
-1. **Let the server listen on your network interface.** In `run_desktop.py`, set
-   `HOST = "0.0.0.0"` and leave `LOAD_HOST = "127.0.0.1"` unchanged.
-2. **Allow the device's address.** Find the local IP address of the computer
-   running Idea Collector (Windows: `ipconfig`; Linux: `hostname -I`;
-   macOS: `ipconfig getifaddr en0`) and add it to `ALLOWED_HOSTS` in
-   `idea_collector/idea_collector/settings.py`:
+```bat
+set IDEACOLLECTOR_HOST=0.0.0.0
+set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.50
+start_ideacollector.bat
+```
 
-   ```python
-   ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.1.50']
-   ```
+Linux / macOS:
 
-   Use your own IP address (or hostname) instead of `192.168.1.50`.
-3. **Allow the port through the firewall** of the host computer (TCP port
+```bash
+IDEACOLLECTOR_HOST=0.0.0.0 \
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.50 \
+./start_ideacollector.sh
+```
+
+For the packaged application, start the executable from the same terminal
+instead of the start script.
+
+To use it from a phone or tablet in your own trusted network:
+
+1. **Find the computer's address.** Use `ipconfig` on Windows, `hostname -I` on
+   Linux, or `ipconfig getifaddr en0` on macOS, and add it to
+   `DJANGO_ALLOWED_HOSTS` instead of `192.168.1.50`.
+2. **Allow the port through the firewall** of the host computer (TCP port
    `8000`). On Windows, confirm the firewall prompt when Python starts or add an
    inbound rule for the port.
-4. **Restart the app** and open `http://<computer-ip>:8000` on the other device,
-   for example `http://192.168.1.50:8000`.
+3. **Start the app** with the environment variables above and open
+   `http://<computer-ip>:8000` on the other device, for example
+   `http://192.168.1.50:8000`.
 
 Create an account first under **Settings** so the app asks for a login. Only do
 this in a trusted network and never expose the server directly to the internet -
@@ -116,6 +128,40 @@ cd idea_collector
 ../venv/bin/python manage.py migrate
 ../venv/bin/python manage.py runserver 127.0.0.1:8000
 ```
+
+## Build desktop executables
+
+The app can be packaged as a desktop application with PyInstaller for Windows,
+macOS, and Linux. The `Desktop build` workflow in
+`.github/workflows/build.yml` builds and smoke-tests all three platforms on every
+push and pull request. The release workflow attaches the packaged builds to
+GitHub releases.
+
+Windows:
+
+```bat
+python -m venv venv
+venv\Scripts\python -m pip install -r requirements-build.txt
+venv\Scripts\python -m PyInstaller --noconfirm --clean idea-collector.spec
+```
+
+Linux / macOS:
+
+```bash
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements-build.txt
+venv/bin/python -m PyInstaller --noconfirm --clean idea-collector.spec
+```
+
+The packaged application is written to `dist/`. On Linux the build uses Qt
+(PyQt6), on macOS PyObjC, and on Windows Microsoft Edge WebView2. The frozen app
+keeps its database, media files, secret key, and `storage.json` in the per-user
+data directory; set `IDEACOLLECTOR_DATA_DIR` to override it. The host and allowed
+hosts can be changed at runtime with `IDEACOLLECTOR_HOST` and
+`DJANGO_ALLOWED_HOSTS`.
+
+Run the packaged application with `--self-test` to start the local server, check
+the bundled templates and static files, and exit without opening a window.
 
 ## Test data
 

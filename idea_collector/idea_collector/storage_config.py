@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from pathlib import Path
 
 from django.conf import settings
@@ -8,11 +9,43 @@ from django.core.management.utils import get_random_secret_key
 
 STORAGE_CONFIG_FILE_NAME = "storage.json"
 SECRET_KEY_FILE_NAME = ".secret_key"
+APP_DIR_NAME = "IdeaCollector"
 _PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 
+def is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
+
+def get_data_dir() -> Path:
+    """Return the writable directory for the database, media files and config."""
+    override = os.getenv("IDEACOLLECTOR_DATA_DIR")
+    if override:
+        path = Path(override).expanduser().resolve()
+    elif is_frozen():
+        if sys.platform == "win32":
+            base = os.getenv("APPDATA") or Path.home() / "AppData" / "Roaming"
+            path = Path(base) / APP_DIR_NAME
+        elif sys.platform == "darwin":
+            path = Path.home() / "Library" / "Application Support" / APP_DIR_NAME
+        else:
+            base = os.getenv("XDG_DATA_HOME") or Path.home() / ".local" / "share"
+            path = Path(base) / "idea-collector"
+    else:
+        return _PROJECT_DIR
+
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def get_config_dir() -> Path:
+    if os.getenv("IDEACOLLECTOR_DATA_DIR") or is_frozen():
+        return get_data_dir()
+    return _PROJECT_DIR.parent
+
+
 def get_storage_config_path() -> Path:
-    return _PROJECT_DIR.parent / STORAGE_CONFIG_FILE_NAME
+    return get_config_dir() / STORAGE_CONFIG_FILE_NAME
 
 
 def _read_config(config_path=None) -> dict:
@@ -36,14 +69,14 @@ def get_media_root(config_path=None) -> str:
     media_root = _read_config(config_path).get("media_root")
     if media_root:
         return str(media_root)
-    return os.getenv("DJANGO_MEDIA_ROOT", str(_PROJECT_DIR / "media"))
+    return os.getenv("DJANGO_MEDIA_ROOT", str(get_data_dir() / "media"))
 
 
 def get_database_path(config_path=None) -> str:
     database_path = _read_config(config_path).get("database_path")
     if database_path:
         return str(database_path)
-    return os.getenv("DJANGO_DB_PATH", str(_PROJECT_DIR / "db.sqlite3"))
+    return os.getenv("DJANGO_DB_PATH", str(get_data_dir() / "db.sqlite3"))
 
 
 def save_media_root(path, config_path=None) -> str:
@@ -69,7 +102,7 @@ def apply_media_root(path) -> None:
 
 
 def get_secret_key_path() -> Path:
-    return _PROJECT_DIR.parent / SECRET_KEY_FILE_NAME
+    return get_config_dir() / SECRET_KEY_FILE_NAME
 
 
 def get_or_create_secret_key(config_path=None) -> str:

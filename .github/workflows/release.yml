@@ -9,8 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and publish release
+  build:
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish release
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -18,34 +24,24 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          venv/bin/python -m pip install --upgrade pip
-          venv/bin/python -m pip install -r requirements.txt
-
-      - name: Run Django tests
-        run: venv/bin/python idea_collector/manage.py test
+          path: release-assets
+          merge-multiple: true
 
       - name: Build source archive
         run: |
           set -euo pipefail
           git archive --format=zip \
             --prefix="idea-collector-${GITHUB_REF_NAME}/" \
-            -o "idea-collector-${GITHUB_REF_NAME}.zip" HEAD
+            -o "release-assets/idea-collector-${GITHUB_REF_NAME}.zip" HEAD
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            "idea-collector-${GITHUB_REF_NAME}.zip" \
+            release-assets/*.zip \
             --title "Idea Collector ${GITHUB_REF_NAME}" \
             --generate-notes

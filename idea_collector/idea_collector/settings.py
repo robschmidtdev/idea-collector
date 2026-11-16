@@ -27,7 +27,11 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or storage_config.get_or_create_secr
 # This app is meant to run locally only, so debug mode is always enabled.
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1").split(",")
+    if host.strip()
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = storage_config.get_media_root()
