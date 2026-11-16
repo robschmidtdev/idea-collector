@@ -8,7 +8,7 @@ from .models import CustomFilter, Item, Tag
 class DatabasePathForm(forms.Form):
     database_path = forms.CharField(
         label="Database Folder",
-        help_text="Absolute path to a folder. The current database file will be copied into it.",
+        help_text="Select a folder. The current database will be copied there.",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
 
@@ -29,7 +29,7 @@ class DatabasePathForm(forms.Form):
 class MediaRootForm(forms.Form):
     media_root = forms.CharField(
         label="Media Root",
-        help_text="Absolute path where uploaded media files are stored.",
+        help_text="Select a folder. Existing media files will be copied there.",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
 

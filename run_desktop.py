@@ -51,7 +51,7 @@ def main():
         sys.exit(1)
 
     icon_path = os.path.join(app_dir, "main", "static", "main", "favicon.ico")
-    webview.create_window("Idea Collector", URL, width=1200, height=800)
+    webview.create_window("", URL, width=1200, height=800)
     webview.start(icon=icon_path if os.path.isfile(icon_path) else None)
     os._exit(0)
 

@@ -244,12 +244,9 @@
                                 <div class="text-danger small">{{ media_root_form.media_root.errors }}</div>
                             {% endif %}
                             <div class="form-text">
-                                Absolute path where uploaded media files are stored. The value is saved to storage.json.
+                                Select a folder. Existing media files will be copied there.
                             </div>
                             <div class="form-text">Current media root: <strong>{{ media_root }}</strong></div>
-                            <div class="alert alert-info py-2 mt-3">
-                                After changing the media root, a restart of the app is recommended.
-                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -262,12 +259,9 @@
                                 <div class="text-danger small">{{ database_path_form.database_path.errors }}</div>
                             {% endif %}
                             <div class="form-text">
-                                Select a folder. The current database file will be copied into it and the new path will be saved to storage.json.
+                                Select a folder. The current database will be copied there.
                             </div>
                             <div class="form-text">Current database path: <strong>{{ database_path }}</strong></div>
-                            <div class="alert alert-info py-2 mt-3">
-                                The current database is copied automatically. Changing the database path requires a restart of the app.
-                            </div>
                         </div>
 
                         <button type="submit" name="save_storage" class="btn btn-primary mt-2">Save Storage</button>
