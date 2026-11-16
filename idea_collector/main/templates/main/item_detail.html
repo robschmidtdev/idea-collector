@@ -104,6 +104,17 @@
         </div>
     {% endif %}
 
+    {% if item.files.all %}
+        <h3 class="mb-3">Other Files</h3>
+        <div class="list-group shadow-sm mb-4">
+            {% for f in item.files.all %}
+                <div class="list-group-item py-3">
+                    <a href="{{ f.file.url }}" target="_blank" rel="noopener">{{ f.file.name }}</a>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% if item.referenced_items.all %}
         <h3 class="mb-3">Referenced Items</h3>
         <div class="list-group shadow-sm mb-4 item-list" id="referencedItemsList">

@@ -180,3 +180,21 @@ class ItemAudio(models.Model):
 
     def __str__(self):
         return f"Audio - {self.item.name}"
+
+
+class ItemFile(models.Model):
+    item = models.ForeignKey(
+        Item,
+        on_delete=models.CASCADE,
+        related_name="files",
+    )
+    file = models.FileField(upload_to="items/files/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Item File"
+        verbose_name_plural = "Item Files"
+
+    def __str__(self):
+        return f"File - {self.item.name}"

@@ -56,8 +56,8 @@
 
                 <h4 class="mb-3">Media</h4>
 
-                {% if item.videos.all or item.audios.all %}
-                    <p class="text-muted">Select existing media to delete it when saving.</p>
+                {% if item.videos.all or item.audios.all or item.files.all %}
+                    <p class="text-muted">Select existing media or files to delete them when saving.</p>
 
                     {% if item.videos.all %}
                         <div class="mb-3">
@@ -83,6 +83,18 @@
                         </div>
                     {% endif %}
 
+                    {% if item.files.all %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Current Other Files</label>
+                            {% for f in item.files.all %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="delete_files" value="{{ f.pk }}" id="deleteFile{{ f.pk }}">
+                                    <label class="form-check-label" for="deleteFile{{ f.pk }}">{{ f.file.name }}</label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
                     <hr class="my-4">
                 {% endif %}
 
@@ -96,6 +108,11 @@
                 <div class="mb-3">
                     <label for="formAudios" class="form-label">Audio Files (Multiple selection possible)</label>
                     <input class="form-control" type="file" id="formAudios" name="audios" multiple accept="audio/*">
+                </div>
+
+                <div class="mb-3">
+                    <label for="formFiles" class="form-label">Other Files (Multiple selection possible)</label>
+                    <input class="form-control" type="file" id="formFiles" name="files" multiple>
                 </div>
 
                 <div class="mb-3">

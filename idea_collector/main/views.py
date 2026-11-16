@@ -25,6 +25,7 @@ from .models import (
     CustomFilter,
     Item,
     ItemAudio,
+    ItemFile,
     ItemVideo,
     SiteSettings,
     Tag,
@@ -303,10 +304,10 @@ def logout_view(request):
 
 def items(request):
     pinned_items = Item.objects.filter(pinned=True).prefetch_related(
-        "tags", "videos", "audios", "referenced_items", "custom_filters"
+        "tags", "videos", "audios", "files", "referenced_items", "custom_filters"
     ).order_by("pin_order", "name")
     unpinned_items = Item.objects.filter(pinned=False).prefetch_related(
-        "tags", "videos", "audios", "referenced_items", "custom_filters"
+        "tags", "videos", "audios", "files", "referenced_items", "custom_filters"
     ).order_by("name")
 
     visible_filters = []
@@ -392,7 +393,7 @@ def item_reorder(request):
 
 def item_detail(request, pk):
     item = get_object_or_404(
-        Item.objects.prefetch_related("tags", "videos", "audios", "referenced_items", "referenced_items__tags"),
+        Item.objects.prefetch_related("tags", "videos", "audios", "files", "referenced_items", "referenced_items__tags"),
         pk=pk,
     )
     context = {
@@ -407,6 +408,8 @@ def _save_media(item, request):
         ItemVideo.objects.create(item=item, video=f)
     for f in request.FILES.getlist("audios"):
         ItemAudio.objects.create(item=item, audio=f)
+    for f in request.FILES.getlist("files"):
+        ItemFile.objects.create(item=item, file=f)
 
 
 def _delete_media(model, field, item, pks):
@@ -418,6 +421,7 @@ def _delete_media(model, field, item, pks):
 def _delete_media_selection(item, request):
     _delete_media(ItemVideo, "video", item, request.POST.getlist("delete_videos"))
     _delete_media(ItemAudio, "audio", item, request.POST.getlist("delete_audios"))
+    _delete_media(ItemFile, "file", item, request.POST.getlist("delete_files"))
 
 
 def item_create(request):
@@ -466,6 +470,8 @@ def item_delete(request, pk):
         video.video.delete(save=False)
     for audio in item.audios.all():
         audio.audio.delete(save=False)
+    for file in item.files.all():
+        file.file.delete(save=False)
     item.delete()
 
     return redirect("items")
