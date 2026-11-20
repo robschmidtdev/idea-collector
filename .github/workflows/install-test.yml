@@ -60,8 +60,7 @@ jobs:
           NO_PROXY: 127.0.0.1,localhost
         run: |
           set -euo pipefail
-          chmod +x start_ideacollector.sh
-          nohup ./start_ideacollector.sh --no-window > installer.log 2>&1 &
+          nohup venv/bin/python run_desktop.py --no-window > installer.log 2>&1 &
           installer_pid=$!
           cleanup() {
             echo "----- installer.log -----"
@@ -93,9 +92,11 @@ jobs:
         run: |
           $ErrorActionPreference = 'Continue'
           $exitCode = 0
+          $env:IDEACOLLECTOR_DATA_DIR = Join-Path $env:RUNNER_TEMP "idea-collector-test"
+          $env:IDEACOLLECTOR_STARTUP_TIMEOUT = 180
 
-          $installer = Start-Process -FilePath "cmd.exe" `
-            -ArgumentList "/c", "start_ideacollector.bat --no-window" `
+          $installer = Start-Process -FilePath "venv\Scripts\python.exe" `
+            -ArgumentList @("run_desktop.py", "--no-window") `
             -RedirectStandardOutput "installer.log" `
             -RedirectStandardError "installer.err" `
             -NoNewWindow -PassThru

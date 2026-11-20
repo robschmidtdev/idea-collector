@@ -22,47 +22,28 @@ them again later.
 - **Customize** the site title, accent color, and where the database and media
   files are stored.
 
-## Requirements
+## Install the packaged desktop app
+
+Download the ZIP for your platform from the
+[GitHub releases](https://github.com/robschmidtdev/idea-collector/releases) and
+unpack it:
+
+- Windows: run `IdeaCollector.exe`
+- macOS: run `IdeaCollector.app`
+- Linux: run `IdeaCollector/IdeaCollector`
+
+Python is included in these builds, so it does not have to be installed
+separately. On Windows, the Microsoft Edge WebView2 runtime is required (already
+included in Windows 11 and recent Windows 10 versions). The app keeps its
+database, media files, secret key, and `storage.json` in a per-user data
+directory; set `IDEACOLLECTOR_DATA_DIR` to override it.
+
+## Requirements for running from source
 
 - Python 3.11 or newer (must be available in `PATH`)
 - On Debian/Ubuntu: `sudo apt install python3-venv python3-pip`
 
-## Windows
-
-Double-click `start_ideacollector.bat`. On first start it automatically:
-
-1. creates the `venv` virtual environment,
-2. installs the dependencies from `requirements.txt`,
-3. applies database migrations,
-4. starts the app in a desktop window.
-
-To stop the app, close the app window or the console window.
-
-To start the server without opening the desktop window (for example in CI or on a
-headless server), run `start_ideacollector.bat --no-window`.
-
-## Linux / macOS
-
-```bash
-./start_ideacollector.sh
-```
-
-On first start it automatically:
-
-1. creates a `venv` virtual environment (or reuses an existing `venv`/`.venv`),
-2. installs the dependencies from `requirements.txt`,
-3. applies database migrations,
-4. starts the app in a desktop window.
-
-To stop the app, close the app window or the terminal.
-
-To start the server without opening the desktop window (for example in CI or on a
-headless server), run `./start_ideacollector.sh --no-window`.
-
-On Linux, make the script executable once with `chmod +x start_ideacollector.sh`.
-On macOS, double-clicking a `.sh` file usually opens an editor instead of a terminal;
-run it from Terminal with `./start_ideacollector.sh` or rename it to `.command` and
-double-click that file.
+The packaged app does not need Python. See [Run from source](#run-from-source).
 
 ## Access from phone or tablet
 
@@ -76,24 +57,35 @@ rebuild is required - also not for the packaged application:
   addresses.
 - `IDEACOLLECTOR_PORT` - port (`8000`).
 
-Windows (run these commands in the terminal before starting the app):
+Set the variables in the terminal before starting the packaged app.
+
+Windows (cmd):
 
 ```bat
 set IDEACOLLECTOR_HOST=0.0.0.0
 set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.50
-start_ideacollector.bat
+IdeaCollector.exe
 ```
 
-Linux / macOS:
+Linux:
 
 ```bash
 IDEACOLLECTOR_HOST=0.0.0.0 \
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.50 \
-./start_ideacollector.sh
+./IdeaCollector/IdeaCollector
 ```
 
-For the packaged application, start the executable from the same terminal
-instead of the start script.
+macOS:
+
+```bash
+IDEACOLLECTOR_HOST=0.0.0.0 \
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.1.50 \
+./IdeaCollector.app/Contents/MacOS/IdeaCollector
+```
+
+When running from source, start `venv\Scripts\python.exe run_desktop.py`
+(Windows) or `venv/bin/python run_desktop.py` (Linux/macOS) from the same terminal
+instead of the packaged executable.
 
 To use it from a phone or tablet in your own trusted network:
 
@@ -101,7 +93,7 @@ To use it from a phone or tablet in your own trusted network:
    Linux, or `ipconfig getifaddr en0` on macOS, and add it to
    `DJANGO_ALLOWED_HOSTS` instead of `192.168.1.50`.
 2. **Allow the port through the firewall** of the host computer (TCP port
-   `8000`). On Windows, confirm the firewall prompt when Python starts or add an
+   `8000`). On Windows, confirm the firewall prompt when the app starts or add an
    inbound rule for the port.
 3. **Start the app** with the environment variables above and open
    `http://<computer-ip>:8000` on the other device, for example
@@ -111,7 +103,7 @@ Create an account first under **Settings** so the app asks for a login. Only do
 this in a trusted network and never expose the server directly to the internet -
 it runs with Django's development server and `DEBUG` enabled.
 
-## Manual start (for Developers)
+## Run from source
 
 ```bash
 python -m venv venv
@@ -166,8 +158,8 @@ data directory; set `IDEACOLLECTOR_DATA_DIR` to override it. The host and allowe
 hosts can be changed at runtime with `IDEACOLLECTOR_HOST` and
 `DJANGO_ALLOWED_HOSTS`.
 
-Run the packaged application with `--self-test` to start the local server, check
-the bundled templates and static files, and exit without opening a window.
+Run the packaged application or `run_desktop.py --self-test` to start the local
+server, check the templates and static files, and exit without opening a window.
 
 ## Test data
 
