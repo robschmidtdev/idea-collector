@@ -56,7 +56,6 @@ jobs:
         env:
           IDEACOLLECTOR_DATA_DIR: ${{ runner.temp }}/idea-collector-test
           IDEACOLLECTOR_STARTUP_TIMEOUT: 180
-          no_proxy: 127.0.0.1,localhost
           NO_PROXY: 127.0.0.1,localhost
         run: |
           set -euo pipefail
