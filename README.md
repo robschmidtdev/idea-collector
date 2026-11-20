@@ -32,6 +32,9 @@ unpack it:
 - macOS: run `IdeaCollector.app`
 - Linux: run `IdeaCollector/IdeaCollector`
 
+The Linux ZIP keeps the executable bit. If your extraction tool drops it, run
+`chmod +x IdeaCollector/IdeaCollector` once.
+
 Python is included in these builds, so it does not have to be installed
 separately. On Windows, the Microsoft Edge WebView2 runtime is required (already
 included in Windows 11 and recent Windows 10 versions). The app keeps its

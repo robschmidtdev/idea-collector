@@ -9,6 +9,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
+    os.environ["PYWEBVIEW_GUI"] = "qt"
+    os.environ["QT_API"] = "pyqt6"
+
 import django
 import webview
 from django.core.management import call_command
@@ -18,10 +22,6 @@ HOST = os.getenv("IDEACOLLECTOR_HOST", "127.0.0.1")
 LOAD_HOST = "127.0.0.1" if HOST in ("0.0.0.0", "::") else HOST
 PORT = int(os.getenv("IDEACOLLECTOR_PORT", "8000"))
 URL = f"http://{LOAD_HOST}:{PORT}"
-
-if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
-    os.environ.setdefault("PYWEBVIEW_GUI", "qt")
-    os.environ.setdefault("QT_API", "pyqt6")
 
 
 def is_frozen():
@@ -111,6 +111,21 @@ def run_self_test():
     return 0
 
 
+def run_gui_self_test():
+    try:
+        from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+        import qtpy
+    except Exception:
+        traceback.print_exc()
+        print("GUI self-test failed", file=sys.stderr)
+        return 1
+    print(
+        f"GUI self-test passed: Qt {QT_VERSION_STR}, "
+        f"PyQt {PYQT_VERSION_STR}, qtpy {qtpy.QT_VERSION}"
+    )
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Idea Collector desktop application")
     parser.add_argument(
@@ -123,7 +138,15 @@ def main(argv=None):
         action="store_true",
         help="run the local server without opening a desktop window",
     )
+    parser.add_argument(
+        "--gui-self-test",
+        action="store_true",
+        help="check that the bundled Qt bindings load and exit",
+    )
     args = parser.parse_args(argv)
+
+    if args.gui_self_test:
+        return run_gui_self_test()
 
     base_dir = get_base_dir()
     start_django(base_dir)

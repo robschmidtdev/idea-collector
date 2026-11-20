@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             artifact_name: idea-collector-linux
           - os: macos-latest
             artifact_name: idea-collector-macos
@@ -75,6 +75,7 @@ jobs:
         run: |
           export IDEACOLLECTOR_DATA_DIR="$RUNNER_TEMP/idea-collector-test"
           "dist/IdeaCollector/IdeaCollector" --self-test
+          "dist/IdeaCollector/IdeaCollector" --gui-self-test
 
       - name: Package build (Windows)
         if: runner.os == 'Windows'
