@@ -4,6 +4,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -81,13 +82,18 @@ def start_django(base_dir):
 
 
 def start_server():
-    server = threading.Thread(
-        target=call_command,
-        args=("runserver", f"{HOST}:{PORT}", "--noreload"),
-        daemon=True,
-    )
+    errors = []
+
+    def target():
+        try:
+            call_command("runserver", f"{HOST}:{PORT}", "--noreload")
+        except BaseException as exc:
+            errors.append(exc)
+            traceback.print_exc()
+
+    server = threading.Thread(target=target, daemon=True)
     server.start()
-    return server
+    return server, errors
 
 
 def run_self_test():
@@ -121,13 +127,16 @@ def main(argv=None):
 
     base_dir = get_base_dir()
     start_django(base_dir)
-    start_server()
+    server, server_errors = start_server()
 
     if args.self_test:
         return run_self_test()
 
-    if not wait_for_server(LOAD_HOST, PORT):
+    startup_timeout = int(os.getenv("IDEACOLLECTOR_STARTUP_TIMEOUT", "30"))
+    if not wait_for_server(LOAD_HOST, PORT, timeout=startup_timeout):
         print(f"Could not start server at {URL}")
+        for exc in server_errors:
+            print(f"Server thread error: {exc!r}", file=sys.stderr)
         return 1
 
     if args.no_window:

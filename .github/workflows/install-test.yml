@@ -50,45 +50,42 @@ jobs:
           venv/Scripts/python.exe -m pip install --upgrade pip
           venv/Scripts/python.exe -m pip install -r requirements.txt
 
-      - name: Start installer (Linux/macOS)
+      - name: Install, start and test (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
+        env:
+          IDEACOLLECTOR_DATA_DIR: ${{ runner.temp }}/idea-collector-test
+          IDEACOLLECTOR_STARTUP_TIMEOUT: 180
+          no_proxy: 127.0.0.1,localhost
+          NO_PROXY: 127.0.0.1,localhost
         run: |
           set -euo pipefail
           chmod +x start_ideacollector.sh
           nohup ./start_ideacollector.sh --no-window > installer.log 2>&1 &
-          echo $! > installer.pid
+          installer_pid=$!
+          cleanup() {
+            echo "----- installer.log -----"
+            cat installer.log 2>/dev/null || true
+            kill "$installer_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
 
-      - name: Wait for server (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
+          is_up=false
           for attempt in $(seq 1 180); do
             if curl -fsS --noproxy '*' http://127.0.0.1:8000/ >/dev/null 2>&1; then
               echo "Server is up after ${attempt}s"
-              exit 0
+              is_up=true
+              break
             fi
             sleep 1
           done
-          echo "Server did not start within 180 seconds"
-          echo "----- installer.log -----"
-          cat installer.log || true
-          exit 1
 
-      - name: Run Django tests (Linux/macOS)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: venv/bin/python idea_collector/manage.py test
-
-      - name: Stop server (Linux/macOS)
-        if: always() && runner.os != 'Windows'
-        shell: bash
-        run: |
-          echo "----- installer.log -----"
-          cat installer.log 2>/dev/null || true
-          if [ -f installer.pid ]; then
-            kill "$(cat installer.pid)" 2>/dev/null || true
+          if [ "$is_up" != true ]; then
+            echo "Server did not start within 180 seconds"
+            exit 1
           fi
+
+          venv/bin/python idea_collector/manage.py test
 
       - name: Install, start and test (Windows)
         if: runner.os == 'Windows'
