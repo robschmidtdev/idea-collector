@@ -35,6 +35,19 @@ unpack it:
 The Linux ZIP keeps the executable bit. If your extraction tool drops it, run
 `chmod +x IdeaCollector/IdeaCollector` once.
 
+The Linux build uses Qt (QtWebEngine). It needs a few system libraries that are
+not part of the ZIP, and Linux builds are made on Ubuntu 22.04, so glibc 2.35 or
+newer is required (Ubuntu 22.04, Debian 12, Fedora 36 or newer):
+
+```bash
+sudo apt install libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 libxcb-cursor0 \
+  libnss3 libasound2
+```
+
+If the window does not open, the app prints which Qt module failed to load and
+keeps serving the app in a browser. `IdeaCollector --gui-self-test` checks the
+bundled Qt libraries without opening a window.
+
 Python is included in these builds, so it does not have to be installed
 separately. On Windows, the Microsoft Edge WebView2 runtime is required (already
 included in Windows 11 and recent Windows 10 versions). The app keeps its

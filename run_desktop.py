@@ -1,4 +1,5 @@
 ﻿import argparse
+import importlib
 import os
 import socket
 import sys
@@ -114,9 +115,11 @@ def run_self_test():
 def run_gui_self_test():
     try:
         from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
+        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
         import qtpy
     except Exception:
         traceback.print_exc()
+        print_gui_diagnostics()
         print("GUI self-test failed", file=sys.stderr)
         return 1
     print(
@@ -124,6 +127,26 @@ def run_gui_self_test():
         f"PyQt {PYQT_VERSION_STR}, qtpy {qtpy.QT_VERSION}"
     )
     return 0
+
+
+def print_gui_diagnostics():
+    print("GUI backend check:", file=sys.stderr)
+    for module in ("qtpy", "PyQt6.QtCore", "PyQt6.QtWebEngineWidgets", "gi"):
+        try:
+            importlib.import_module(module)
+        except BaseException as exc:
+            print(f"  {module}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        else:
+            print(f"  {module}: ok", file=sys.stderr)
+
+
+def serve_forever(url):
+    print(f"Server running at {url}. Press Ctrl+C to stop.")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        return 0
 
 
 def main(argv=None):
@@ -163,16 +186,24 @@ def main(argv=None):
         return 1
 
     if args.no_window:
-        print(f"Server running at {URL}. Press Ctrl+C to stop.")
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            return 0
+        return serve_forever(URL)
 
     icon_path = get_icon_path(base_dir)
-    webview.create_window("Idea Collector", URL, width=1200, height=800)
-    webview.start(icon=str(icon_path) if icon_path else None)
+    try:
+        webview.create_window("Idea Collector", URL, width=1200, height=800)
+        webview.start(icon=str(icon_path) if icon_path else None)
+    except webview.WebViewException as exc:
+        print(f"Could not open the desktop window: {exc}", file=sys.stderr)
+        print_gui_diagnostics()
+        if sys.platform.startswith("linux"):
+            print(
+                "Install the Qt runtime libraries, for example on Debian/Ubuntu:\n"
+                "  sudo apt install libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 "
+                "libxcb-cursor0 libnss3 libasound2",
+                file=sys.stderr,
+            )
+        print(f"The app stays available in a browser at {URL}", file=sys.stderr)
+        return serve_forever(URL)
     return 0
 
 
